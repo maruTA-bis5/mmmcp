@@ -1,0 +1,58 @@
+{
+  "name": "@maruta-bis5/mmmcp",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol local server for Mattermost.",
+  "type": "module",
+  "bin": {
+    "mmmcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "inspect": "cross-var mcp-inspector -e MATTERMOST_URL=$MATTERMOST_URL -e MATTERMOST_TOKEN=$MATTERMOST_TOKEN tsx src/index.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lint": "eslint src test --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test && npm run lint"
+  },
+  "keywords": [
+    "mcp",
+    "mattermost"
+  ],
+  "author": "Takayuki Maruyama",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maruTA-bis5/mmmcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maruTA-bis5/mmmcp/issues"
+  },
+  "homepage": "https://github.com/maruTA-bis5/mmmcp#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@mattermost/client": "^11.9.0",
+    "@mattermost/types": "^11.9.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/inspector": "^2.0.0",
+    "@types/node": "^26.1.2",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "cross-var": "^1.1.0",
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

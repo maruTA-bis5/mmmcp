@@ -1,0 +1,94 @@
+name: Integration
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Mattermost ${{ matrix.mattermost-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        mattermost-version: ['11.9.0', '11.7.9']
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mattermost
+          POSTGRES_USER: mattermost
+          POSTGRES_PASSWORD: mattermost-ci-password
+        options: >-
+          --health-cmd "pg_isready -U mattermost -d mattermost"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 5432:5432
+      mattermost:
+        image: mattermost/mattermost-team-edition:${{ matrix.mattermost-version }}
+        env:
+          MM_SQLSETTINGS_DRIVERNAME: postgres
+          MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:mattermost-ci-password@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+          MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+          MM_SERVICESETTINGS_ENABLEUSERACCESSTOKENS: 'true'
+        ports:
+          - 8065:8065
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Wait for Mattermost
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error --max-time 5 http://localhost:8065/api/v4/system/ping > /dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Mattermost did not become healthy within five minutes.' >&2
+          exit 1
+      - name: Create integration-test token
+        id: auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_url=http://localhost:8065/api/v4
+          curl --fail --silent --show-error --request POST "$api_url/system/complete" \
+            --header 'Content-Type: application/json' \
+            --data '{"user":{"email":"admin@example.test","username":"admin","password":"Integration-test-password-123!"},"team":{"name":"test","display_name":"Test","type":"O"},"data_retention":false}'
+          curl --fail --silent --show-error --request POST "$api_url/users" \
+            --header 'Content-Type: application/json' \
+            --data '{"email":"integration@example.test","username":"integration","password":"Integration-test-password-123!"}' > user.json
+          user_id=$(node -p "JSON.parse(require('fs').readFileSync('user.json', 'utf8')).id")
+          curl --fail --silent --show-error --dump-header login-headers.txt --output /dev/null \
+            --request POST "$api_url/users/login" \
+            --header 'Content-Type: application/json' \
+            --data '{"login_id":"integration","password":"Integration-test-password-123!"}'
+          session_token=$(awk 'BEGIN { IGNORECASE = 1 } /^Token:/ { print $2 }' login-headers.txt | tr -d '\r')
+          test -n "$session_token"
+          curl --fail --silent --show-error --request POST "$api_url/users/$user_id/tokens" \
+            --header "Authorization: Bearer $session_token" \
+            --header 'Content-Type: application/json' \
+            --data '{"description":"GitHub Actions integration test"}' > token.json
+          token=$(node -p "JSON.parse(require('fs').readFileSync('token.json', 'utf8')).token")
+          rm -f login-headers.txt token.json user.json
+          test -n "$token"
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+      - name: Run integration tests
+        env:
+          MATTERMOST_URL: http://localhost:8065
+          MATTERMOST_TOKEN: ${{ steps.auth.outputs.token }}
+        run: npm run test:integration
