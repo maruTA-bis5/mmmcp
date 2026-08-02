@@ -1,9 +1,15 @@
+import { config as dotenvConfig } from 'dotenv';
+
+import type { MattermostAuth } from './mattermost/types.js';
+
+dotenvConfig();
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface Config {
   mattermost: {
     url: string;
-    token: string;
+    auth: MattermostAuth;
   };
   readonly: boolean;
   logLevel: LogLevel;
@@ -51,14 +57,21 @@ export function parseConfig(
 
   const mattermostUrl = url ?? environment.MATTERMOST_URL;
   const token = environment.MATTERMOST_TOKEN;
+  const username = environment.MATTERMOST_USERNAME;
+  const password = environment.MATTERMOST_PASSWORD;
 
   if (mattermostUrl === undefined || mattermostUrl.trim() === "") {
     throw new ConfigurationError(
       "Mattermost URL is required. Provide --url or MATTERMOST_URL.",
     );
   }
-  if (token === undefined || token.trim() === "") {
-    throw new ConfigurationError("MATTERMOST_TOKEN is required.");
+  const hasToken = token !== undefined && token.trim() !== "";
+  const hasUsername = username !== undefined && username.trim() !== "";
+  const hasPassword = password !== undefined && password.trim() !== "";
+  if (!hasToken && (!hasUsername || !hasPassword)) {
+    throw new ConfigurationError(
+      "Set MATTERMOST_TOKEN or both MATTERMOST_USERNAME and MATTERMOST_PASSWORD.",
+    );
   }
 
   let normalizedUrl: string;
@@ -75,7 +88,12 @@ export function parseConfig(
   }
 
   return {
-    mattermost: { url: normalizedUrl, token },
+    mattermost: {
+      url: normalizedUrl,
+      auth: hasToken
+        ? { token: token as string }
+        : { username: username as string, password: password as string },
+    },
     readonly,
     logLevel,
   };

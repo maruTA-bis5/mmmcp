@@ -33,6 +33,15 @@ export type MattermostApi = Pick<
 
 export interface MattermostClientOptions {
   url: string;
+  auth: MattermostAuth;
+}
+
+export type MattermostAuth =
+  | { token: string }
+  | { username: string; password: string };
+
+export interface TokenMattermostClientOptions {
+  url: string;
   token: string;
 }
 
