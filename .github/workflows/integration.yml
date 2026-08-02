@@ -16,7 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mattermost-version: ['11.9.0', '11.7.9']
+        mattermost-version: 
+          - '11.9.0' # latest
+          - '11.7.8' # curret lts
+          - '10.11.22' # previous lts
     services:
       postgres:
         image: postgres:16-alpine
@@ -47,29 +50,26 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Wait for Mattermost
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in {1..60}; do
-            if curl --fail --silent --show-error --max-time 5 http://localhost:8065/api/v4/system/ping > /dev/null; then
-              exit 0
-            fi
-            sleep 5
-          done
-          echo 'Mattermost did not become healthy within five minutes.' >&2
-          exit 1
       - name: Create integration-test token
         id: auth
         shell: bash
         run: |
-          set -euo pipefail
+          set -euox pipefail
           api_url=http://localhost:8065/api/v4
-          curl --fail --silent --show-error --request POST "$api_url/system/complete" \
-            --header 'Content-Type: application/json' \
-            --data '{"user":{"email":"admin@example.test","username":"admin","password":"Integration-test-password-123!"},"team":{"name":"test","display_name":"Test","type":"O"},"data_retention":false}'
+          # create first user as admin
           curl --fail --silent --show-error --request POST "$api_url/users" \
             --header 'Content-Type: application/json' \
+            --data '{"email":"admin@example.test","username":"admin","password":"Integration-test-password-123!"}' > admin.json
+          curl --fail --silent --show-error --dump-header login-headers.txt --output /dev/null \
+            --request POST "$api_url/users/login" \
+            --header 'Content-Type: application/json' \
+            --data '{"login_id":"admin","password":"Integration-test-password-123!"}'
+          admin_token=$(awk 'BEGIN { IGNORECASE = 1 } /^Token:/ { print $2 }' login-headers.txt | tr -d '\r')
+          test -n "$admin_token"
+          # create integration test user
+          curl --fail --silent --show-error --request POST "$api_url/users" \
+            --header 'Content-Type: application/json' \
+            --header "Authorization: Bearer $admin_token" \
             --data '{"email":"integration@example.test","username":"integration","password":"Integration-test-password-123!"}' > user.json
           user_id=$(node -p "JSON.parse(require('fs').readFileSync('user.json', 'utf8')).id")
           curl --fail --silent --show-error --dump-header login-headers.txt --output /dev/null \
@@ -78,6 +78,12 @@ jobs:
             --data '{"login_id":"integration","password":"Integration-test-password-123!"}'
           session_token=$(awk 'BEGIN { IGNORECASE = 1 } /^Token:/ { print $2 }' login-headers.txt | tr -d '\r')
           test -n "$session_token"
+          # grant personal access token creation permission to integration test user
+          curl --fail --silent --show-error --request PUT "$api_url/users/$user_id/roles" \
+            --header "Authorization: Bearer $admin_token" \
+            --header 'Content-Type: application/json' \
+            --data '{"roles":"system_user system_user_access_token system_post_all"}'
+          # create personal access token for integration test user
           curl --fail --silent --show-error --request POST "$api_url/users/$user_id/tokens" \
             --header "Authorization: Bearer $session_token" \
             --header 'Content-Type: application/json' \
@@ -86,9 +92,9 @@ jobs:
           rm -f login-headers.txt token.json user.json
           test -n "$token"
           echo "::add-mask::$token"
-          echo "token=$token" >> "$GITHUB_OUTPUT"
+          echo "user-token=$token" >> "$GITHUB_OUTPUT"
       - name: Run integration tests
         env:
           MATTERMOST_URL: http://localhost:8065
-          MATTERMOST_TOKEN: ${{ steps.auth.outputs.token }}
+          MATTERMOST_TOKEN: ${{ steps.auth.outputs.user-token }}
         run: npm run test:integration
