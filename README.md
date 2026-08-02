@@ -143,6 +143,8 @@ $env:MATTERMOST_PASSWORD = "your-password"
 npm run dev -- --readonly
 ```
 
+For local development, dotenv automatically loads a `.env` file from the project root, so you can configure these variables there instead of using inline exports.
+
 Build distributable JavaScript:
 
 ```sh
