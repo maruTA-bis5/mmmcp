@@ -4,6 +4,7 @@ import type {
   DownloadedFile,
   MattermostApi,
   MattermostClientOptions,
+  TokenMattermostClientOptions,
 } from './types.js';
 
 const MAX_FILE_BYTES = 1_048_576;
@@ -11,11 +12,22 @@ const MAX_FILE_BYTES = 1_048_576;
 export class MattermostClient {
   readonly api: MattermostApi;
 
+  private readonly client: Client4;
   private readonly token: string;
+  private readonly shouldLogout: boolean;
 
-  constructor(options: MattermostClientOptions);
+  constructor(options: TokenMattermostClientOptions);
   constructor(url: string, token: string);
-  constructor(optionsOrUrl: MattermostClientOptions | string, suppliedToken?: string) {
+  constructor(
+    options: TokenMattermostClientOptions,
+    suppliedToken: undefined,
+    shouldLogout: boolean,
+  );
+  constructor(
+    optionsOrUrl: TokenMattermostClientOptions | string,
+    suppliedToken?: string,
+    shouldLogout = false,
+  ) {
     const { url, token } =
       typeof optionsOrUrl === 'string'
         ? { url: optionsOrUrl, token: suppliedToken ?? '' }
@@ -32,8 +44,28 @@ export class MattermostClient {
     client.setUrl(url.replace(/\/+$/, ''));
     client.setToken(token);
 
+    this.client = client;
     this.api = client;
     this.token = token;
+    this.shouldLogout = shouldLogout;
+  }
+
+  public static async create(options: MattermostClientOptions): Promise<MattermostClient> {
+    if ('token' in options.auth) {
+      return new MattermostClient({ url: options.url, token: options.auth.token });
+    }
+
+    const client = new Client4();
+    client.setUrl(options.url.replace(/\/+$/, ''));
+    await client.login(options.auth.username, options.auth.password);
+
+    return new MattermostClient({ url: options.url, token: client.token }, undefined, true);
+  }
+
+  public async logout(): Promise<void> {
+    if (this.shouldLogout) {
+      await this.client.logout();
+    }
   }
 
   async downloadFile(fileId: string): Promise<DownloadedFile> {

@@ -22,5 +22,34 @@ function createServer(client: MattermostClient): McpServer {
 }
 
 const config = parseConfig();
-const client = new MattermostClient(config.mattermost);
+const client = await MattermostClient.create(config.mattermost);
+let shuttingDown = false;
+
+async function shutdown(exitCode?: number): Promise<void> {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
+
+  try {
+    await client.logout();
+  } catch (error) {
+    console.error("Failed to log out from Mattermost.", error);
+  } finally {
+    if (exitCode !== undefined) {
+      process.exit(exitCode);
+    }
+  }
+}
+
+process.once("SIGINT", () => {
+  void shutdown(130);
+});
+process.once("SIGTERM", () => {
+  void shutdown(143);
+});
+process.once("beforeExit", () => {
+  void shutdown();
+});
+
 serveStdio(() => createServer(client));

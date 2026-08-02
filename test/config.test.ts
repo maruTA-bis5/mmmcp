@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { ConfigurationError, parseConfig } from "../src/config.js";
 
 const TOKEN = "personal-access-token";
+const USERNAME = "mattermost-user";
+const PASSWORD = "mattermost-password";
 
 describe("parseConfig", () => {
   it("uses command-line URL over the environment and accepts readonly mode", () => {
@@ -12,7 +14,7 @@ describe("parseConfig", () => {
     );
 
     expect(config).toEqual({
-      mattermost: { url: "https://cli.example.test/path", token: TOKEN },
+      mattermost: { url: "https://cli.example.test/path", auth: { token: TOKEN } },
       readonly: true,
       logLevel: "debug",
     });
@@ -25,6 +27,16 @@ describe("parseConfig", () => {
     });
 
     expect(config.mattermost.url).toBe("https://mattermost.example.test");
+  });
+
+  it("uses username and password when a personal access token is absent", () => {
+    const config = parseConfig([], {
+      MATTERMOST_URL: "https://mattermost.example.test",
+      MATTERMOST_USERNAME: USERNAME,
+      MATTERMOST_PASSWORD: PASSWORD,
+    });
+
+    expect(config.mattermost.auth).toEqual({ username: USERNAME, password: PASSWORD });
   });
 
   it("preserves a Mattermost reverse-proxy path", () => {
@@ -50,5 +62,11 @@ describe("parseConfig", () => {
         MATTERMOST_TOKEN: TOKEN,
       }),
     ).toThrow('Unknown option "--token"');
+    expect(() =>
+      parseConfig([], {
+        MATTERMOST_URL: "https://mattermost.example.test",
+        MATTERMOST_USERNAME: USERNAME,
+      }),
+    ).toThrow("MATTERMOST_TOKEN or both MATTERMOST_USERNAME and MATTERMOST_PASSWORD");
   });
 });

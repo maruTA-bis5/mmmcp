@@ -1,12 +1,12 @@
 # mmmcp
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Mattermost. It runs over the stdio transport and connects to Mattermost with a Personal Access Token (PAT).
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Mattermost. It runs over the stdio transport and connects to Mattermost with a Personal Access Token (PAT) or username and password.
 
 ## Requirements
 
 - Node.js 20 or later
 - A Mattermost server
-- A Mattermost Personal Access Token
+- Mattermost credentials: a Personal Access Token, or a username and password
 
 Grant the token only the permissions it needs. To prevent write operations, start the server with `--readonly`; write tools will not be exposed to the MCP client.
 
@@ -32,7 +32,9 @@ npm run build
 | Setting | Source | Required | Description |
 | --- | --- | --- | --- |
 | Mattermost URL | `--url <url>` or `MATTERMOST_URL` | Yes | Mattermost server URL. The CLI option takes precedence over the environment variable. Reverse-proxy paths are supported. |
-| Personal Access Token | `MATTERMOST_TOKEN` | Yes | Mattermost PAT. It cannot be supplied through a CLI option. |
+| Personal Access Token | `MATTERMOST_TOKEN` | One credential option required | Mattermost PAT. It cannot be supplied through a CLI option. |
+| Username | `MATTERMOST_USERNAME` | With password | Mattermost username. It cannot be supplied through a CLI option. |
+| Password | `MATTERMOST_PASSWORD` | With username | Mattermost password. It cannot be supplied through a CLI option. |
 | Read-only mode | `--readonly` | No | Does not register write tools. |
 | Log level | `--log-level <level>` | No | One of `debug`, `info`, `warn`, or `error`. Defaults to `info`. |
 
@@ -40,7 +42,9 @@ Because this is a stdio server, standard output is reserved for the MCP protocol
 
 ## Use with an MCP Client
 
-The following is an MCP configuration example for a global installation. Store `MATTERMOST_TOKEN` using the MCP client's secure environment-variable mechanism.
+The following examples show both supported authentication methods for a global installation. Store credentials using the MCP client's secure environment-variable mechanism.
+
+Using a Personal Access Token:
 
 ```json
 {
@@ -60,7 +64,7 @@ The following is an MCP configuration example for a global installation. Store `
 }
 ```
 
-To run from a local source tree, point the client to the built entry point:
+Using a username and password:
 
 ```json
 {
@@ -73,7 +77,8 @@ To run from a local source tree, point the client to the built entry point:
         "https://mattermost.example.com"
       ],
       "env": {
-        "MATTERMOST_TOKEN": "replace-with-a-personal-access-token"
+        "MATTERMOST_USERNAME": "replace-with-a-username",
+        "MATTERMOST_PASSWORD": "replace-with-a-password"
       }
     }
   }
@@ -126,14 +131,15 @@ npm ci
 Start the server in watch mode:
 
 ```sh
-MATTERMOST_URL=https://mattermost.example.com MATTERMOST_TOKEN=your-token npm run dev -- --readonly
+MATTERMOST_URL=https://mattermost.example.com MATTERMOST_USERNAME=your-user MATTERMOST_PASSWORD=your-password npm run dev -- --readonly
 ```
 
 In PowerShell:
 
 ```powershell
 $env:MATTERMOST_URL = "https://mattermost.example.com"
-$env:MATTERMOST_TOKEN = "your-token"
+$env:MATTERMOST_USERNAME = "your-user"
+$env:MATTERMOST_PASSWORD = "your-password"
 npm run dev -- --readonly
 ```
 
@@ -155,10 +161,10 @@ Build output is written to `dist/`.
 | `npm run test:integration` | Runs Mattermost integration tests. |
 | `npm run build` | Creates a production build. |
 
-Integration tests require a running Mattermost server and a PAT:
+Integration tests require a running Mattermost server and either a PAT or username/password:
 
 ```sh
-MATTERMOST_URL=http://localhost:8065 MATTERMOST_TOKEN=your-token npm run test:integration
+MATTERMOST_URL=http://localhost:8065 MATTERMOST_USERNAME=your-user MATTERMOST_PASSWORD=your-password npm run test:integration
 ```
 
 GitHub Actions starts PostgreSQL and tests Mattermost 11.7.9 and 11.9.0. Integration tests are skipped locally when connection settings are not provided.
