@@ -1,6 +1,6 @@
 {
   "name": "@maruta-bis5/mmmcp",
-  "version": "1.0.0",
+  "version": "0.0.20260802",
   "description": "A Model Context Protocol local server for Mattermost.",
   "type": "module",
   "bin": {
