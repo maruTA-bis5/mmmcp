@@ -7,6 +7,8 @@ import { parseConfig } from "./config.js";
 import { MattermostClient } from "./mattermost/client.js";
 import { registerTools } from "./modes/mode-guard.js";
 
+const LOGOUT_TIMEOUT_MS = 5000;
+
 function createServer(client: MattermostClient): McpServer {
   const server = new McpServer({
     name: "mmmcp",
@@ -32,12 +34,26 @@ async function shutdown(exitCode?: number): Promise<void> {
   shuttingDown = true;
 
   try {
-    await client.logout();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        client.logout(),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error("Mattermost logout timed out."));
+          }, LOGOUT_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
   } catch (error) {
     console.error("Failed to log out from Mattermost.", error);
   } finally {
     if (exitCode !== undefined) {
-      process.exit(exitCode);
+      process.exitCode = exitCode;
     }
   }
 }

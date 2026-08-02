@@ -1,4 +1,7 @@
 import { config as dotenvConfig } from 'dotenv';
+
+import type { MattermostAuth } from './mattermost/types.js';
+
 dotenvConfig();
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -6,9 +9,7 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 export interface Config {
   mattermost: {
     url: string;
-    auth:
-      | { token: string }
-      | { username: string; password: string };
+    auth: MattermostAuth;
   };
   readonly: boolean;
   logLevel: LogLevel;
