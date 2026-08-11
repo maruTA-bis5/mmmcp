@@ -8,7 +8,7 @@ const execFile = util.promisify(child_process.execFile);
 
 const getClient = (token: string): Client4 => {
     const client = new Client4();
-    client.setUrl("http://host.docker.internal:8065");
+    client.setUrl("http://localhost:8065");
     client.setToken(token);
     return client;
 }
@@ -45,13 +45,7 @@ export async function setup(project: TestProject): Promise<void> {
     // share to each test
     project.provide("adminAccessToken", adminAccessToken);
     project.provide("userAccessToken", userAccessToken);
-    project.provide("mattermostUrl", "http://host.docker.internal:8065");
-
-    // await writeFile(ENV_FILE, JSON.stringify({
-    //     url: "http://host.docker.internal:8065",
-    //     adminToken: adminAccessToken, 
-    //     userToken: userAccessToken
-    // }), "utf-8");
+    project.provide("mattermostUrl", "http://localhost:8065");
 
     console.log("Docker compose up completed.");
 }
@@ -70,7 +64,6 @@ export async function teardown(): Promise<void> {
         console.log("Keeping test environment.");
         return;
     }
-    // await unlink(ENV_FILE).catch(() => { /* ignore */ });
     await execFile("docker", ["compose", "-f", "compose-test.yml", "down"]);
     console.log("Docker compose down completed.");
 }
