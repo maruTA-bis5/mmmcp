@@ -163,13 +163,26 @@ Build output is written to `dist/`.
 | `npm run test:integration` | Runs Mattermost integration tests. |
 | `npm run build` | Creates a production build. |
 
-Integration tests require a running Mattermost server and either a PAT or username/password:
+Integration tests require Docker with Docker Compose. The test setup starts Mattermost and PostgreSQL, creates the test users and access tokens, and tears the containers down when the tests finish:
 
 ```sh
-MATTERMOST_URL=http://localhost:8065 MATTERMOST_USERNAME=your-user MATTERMOST_PASSWORD=your-password npm run test:integration
+npm run test:integration
 ```
 
-GitHub Actions starts PostgreSQL and tests Mattermost 11.7.9 and 11.9.0. Integration tests are skipped locally when connection settings are not provided.
+The default Mattermost version is `11.7.8`. Override it with `MATTERMOST_VERSION` when needed:
+
+```sh
+MATTERMOST_VERSION=11.9.0 npm run test:integration
+```
+
+In PowerShell:
+
+```powershell
+$env:MATTERMOST_VERSION = "11.9.0"
+npm run test:integration
+```
+
+Set `KEEP_TEST_ENVIRONMENT=true` to keep the containers running after the tests. GitHub Actions runs the integration tests against Mattermost `11.9.0`, `11.7.8`, and `10.11.22`.
 
 ## License
 
