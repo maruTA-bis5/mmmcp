@@ -35,6 +35,9 @@ export async function execute(operation: () => Promise<unknown>): Promise<ToolRe
 }
 
 export function textResult(value: unknown): ToolResult {
+  if (value && typeof value === 'object' && 'content' in value) {
+    return value as ToolResult;
+  }
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
 }
 

@@ -7,15 +7,17 @@ import { registerReadFileTool } from './files/read-file.js';
 import { registerReadChannelTool } from './posts/read-channel.js';
 import { registerReadThreadTool } from './posts/read-thread.js';
 import { registerSearchPostsTool } from './posts/search-posts.js';
+import type { ToolServer } from './shared.js';
 import { registerGetTeamInfoTool } from './teams/get-team-info.js';
 import { registerGetTeamMembersTool } from './teams/get-team-members.js';
+import { registerTool } from './tool.js';
 import { registerGetUserTeamsTool } from './users/get-user-teams.js';
 import { registerSearchUsersTool } from './users/search-users.js';
-import type { ToolServer } from './shared.js';
-import { registerWhoamiTool } from './users/whoami.js';
+import { WhoamiTool } from './users/whoami.js';
 
 export function registerReadonlyTools(server: ToolServer, client: MattermostClient): void {
-  registerWhoamiTool(server, client);
+  registerTool(server, new WhoamiTool(client));
+
   registerGetUserTeamsTool(server, client);
   registerGetUserChannelsTool(server, client);
   registerGetChannelInfoTool(server, client);

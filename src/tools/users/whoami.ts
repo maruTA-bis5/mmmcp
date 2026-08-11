@@ -1,14 +1,22 @@
+import { UserProfile } from '@mattermost/types/users';
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, type ToolServer } from '../shared.js';
+import { EmptyInput, Tool, ToolDefinition } from '../tool.js';
 
-export function registerWhoamiTool(server: ToolServer, client: MattermostClient): void {
-  server.registerTool(
-    'whoami',
-    {
+export class WhoamiTool implements Tool<EmptyInput, UserProfile> {
+  client: MattermostClient;
+  definition: ToolDefinition<EmptyInput, UserProfile>;
+  constructor(client: MattermostClient) {
+    this.client = client;
+    this.definition = {
+      name: 'whoami',
       description: 'Get the authenticated Mattermost user profile.',
       inputSchema: {},
-    },
-    async () => execute(() => client.api.getMe()),
-  );
+      handler: whoami,
+    };
+  }
+}
+
+function whoami(client: MattermostClient): Promise<UserProfile> {
+  return client.api.getMe();
 }
