@@ -2,7 +2,7 @@ import type { z } from 'zod';
 import type { MattermostClient } from '../mattermost/client.js';
 import { execute, ToolResult, type ToolServer } from './shared.js';
 
-export type EmptyInput = {};
+export type EmptyInput = {[key: string]: never};
 export type ToolOutput = ToolResult | unknown;
 export type ToolDefinition<Input extends z.ZodRawShape, Output extends ToolOutput> = {
     name: string;
