@@ -1,0 +1,32 @@
+services:
+  mattermost:
+    image: mattermost/mattermost-team-edition:${MATTERMOST_VERSION:-11.7.8}
+    ports:
+      - 127.0.0.1:8065:8065
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:mattermost-ci-password@postgres:5432/mattermost?sslmode=disable&connect_timeout=10
+      MM_SERVICESETTINGS_SITEURL: http://127.0.0.1:8065
+      MM_SERVICESETTINGS_ENABLEUSERACCESSTOKENS: 'true'
+      MM_SERVICESETTINGS_ENABLELOCALMODE: 'true'
+      MM_LOGSETTINGS_ENABLECONSOLE: 'true'
+      MM_LOGSETTINGS_CONSOLELEVEL: debug
+    healthcheck:
+      test: ["CMD", "mmctl", "--local", "system", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mattermost
+      POSTGRES_USER: mattermost
+      POSTGRES_PASSWORD: mattermost-ci-password
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "mattermost", "-d", "mattermost"]
+      interval: 5s
+      timeout: 5s
+      retries: 12

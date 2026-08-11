@@ -11,23 +11,17 @@
   ],
   "scripts": {
     "generate": "tsx build/package-info.ts",
-
     "build": "tsc",
     "prebuild": "npm run generate",
-
     "dev": "tsx watch src/index.ts",
     "predev": "npm run generate",
-
     "inspect": "mcp-inspector tsx src/index.ts",
     "preinspect": "npm run generate",
-
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "pretest": "npm run generate",
-
     "typecheck": "tsc --noEmit",
     "pretypecheck": "npm run generate",
-
     "lint": "eslint src test --ext .ts",
     "prepublishOnly": "npm run generate && npm run build && npm run test && npm run lint"
   },
@@ -50,13 +44,13 @@
   },
   "dependencies": {
     "@mattermost/client": "^11.9.0",
-    "@mattermost/types": "^11.9.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "dotenv": "^17.4.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@mattermost/types": "^11.9.0",
     "@modelcontextprotocol/inspector": "^2.0.0",
     "@types/node": "^26.1.2",
     "@typescript-eslint/eslint-plugin": "^8.65.0",

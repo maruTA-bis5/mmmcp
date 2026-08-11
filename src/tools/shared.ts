@@ -7,6 +7,10 @@ export type ToolResult = {
   content: Array<{ type: 'text'; text: string }>;
   isError?: boolean;
 };
+const toolResultSchema = z.object({
+  content: z.array(z.object({ type: z.literal('text'), text: z.string() })),
+  isError: z.boolean().exactOptional(),
+});
 
 export interface ToolServer {
   registerTool<Input extends z.ZodRawShape>(
@@ -35,6 +39,10 @@ export async function execute(operation: () => Promise<unknown>): Promise<ToolRe
 }
 
 export function textResult(value: unknown): ToolResult {
+  const parsed = toolResultSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
 }
 
