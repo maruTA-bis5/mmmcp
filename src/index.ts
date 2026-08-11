@@ -6,13 +6,20 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { parseConfig } from "./config.js";
 import { MattermostClient } from "./mattermost/client.js";
 import { registerTools } from "./modes/mode-guard.js";
+import * as packageInfo from "./generated/package-info.json" with { type: "json" };
 
 const LOGOUT_TIMEOUT_MS = 5000;
 
 function createServer(client: MattermostClient): McpServer {
-  const server = new McpServer({
+  const serverInfo = {
     name: "mmmcp",
-    version: "1.0.0",
+    version: packageInfo.default.version,
+  };
+  client.setUserAgent(`${serverInfo.name}/${serverInfo.version} (Node.js ${process.version})`);
+
+  const server = new McpServer({
+    name: serverInfo.name,
+    version: serverInfo.version,
   });
 
   registerTools(server, client, config.readonly);

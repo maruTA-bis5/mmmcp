@@ -10,6 +10,7 @@
     "dist"
   ],
   "scripts": {
+    "generate": "tsx build/package-info.ts",
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "inspect": "mcp-inspector tsx src/index.ts",
@@ -17,7 +18,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "eslint src test --ext .ts",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm run test && npm run lint"
+    "prepublishOnly": "npm run generate && npm run build && npm run test && npm run lint"
   },
   "keywords": [
     "mcp",

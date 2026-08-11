@@ -102,6 +102,10 @@ export class MattermostClient {
       ...fileMetadata(response),
     };
   }
+
+  setUserAgent(userAgent: string): void {
+    this.client.setUserAgent(userAgent);
+  }
 }
 
 function fileMetadata(response: Response): Pick<DownloadedFile, 'contentType' | 'fileName'> {
