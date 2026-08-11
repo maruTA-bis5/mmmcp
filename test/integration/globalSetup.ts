@@ -64,7 +64,7 @@ export async function teardown(): Promise<void> {
         console.log("Keeping test environment.");
         return;
     }
-    await execFile("docker", ["compose", "-f", "compose-test.yml", "down"]);
+    await execFile("docker", ["compose", "-f", "compose-test.yml", "down", "--volumes"]);
     console.log("Docker compose down completed.");
 }
 
