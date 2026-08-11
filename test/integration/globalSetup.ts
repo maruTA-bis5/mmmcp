@@ -5,10 +5,11 @@ import * as util from "node:util";
 import type { TestProject } from "vitest/node";
 
 const execFile = util.promisify(child_process.execFile);
+const mattermostUrl = "http://127.0.0.1:8065";
 
 const getClient = (token: string): Client4 => {
     const client = new Client4();
-    client.setUrl("http://localhost:8065");
+    client.setUrl(mattermostUrl);
     client.setToken(token);
     return client;
 }
@@ -45,7 +46,7 @@ export async function setup(project: TestProject): Promise<void> {
     // share to each test
     project.provide("adminAccessToken", adminAccessToken);
     project.provide("userAccessToken", userAccessToken);
-    project.provide("mattermostUrl", "http://localhost:8065");
+    project.provide("mattermostUrl", mattermostUrl);
 
     console.log("Docker compose up completed.");
 }
