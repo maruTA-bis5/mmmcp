@@ -5,7 +5,7 @@ import { getMattermostUrl, getUserAccessToken } from "../../testShared.js";
 
 describe("whoami tool", async () => {
     const client = await MattermostClient.create({ url: getMattermostUrl(), auth: { token: getUserAccessToken() } });
-    const me = await client.client.getMe();
+    const me = await client.api.getMe();
     const whoamiTool = new WhoamiTool(client);
     it("should return the authenticated user profile", async () => {
         const profile = await whoamiTool.definition.handler(client, {});
