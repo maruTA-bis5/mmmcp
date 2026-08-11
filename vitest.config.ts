@@ -1,7 +1,7 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    exclude: ["test/integration/", "node_modules"],
+    exclude: [...configDefaults.exclude, "test/integration/**"],
   },
 });
