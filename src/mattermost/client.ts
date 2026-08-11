@@ -12,7 +12,7 @@ const MAX_FILE_BYTES = 1_048_576;
 export class MattermostClient {
   readonly api: MattermostApi;
 
-  readonly client: Client4;
+  private readonly client: Client4;
   private readonly token: string;
   private readonly shouldLogout: boolean;
 
