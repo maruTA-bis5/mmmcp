@@ -1,4 +1,4 @@
-import { Client4 } from '@mattermost/client';
+import { Client4, ClientError } from '@mattermost/client';
 
 import type { DownloadedFile, MattermostApi, MattermostClientOptions, TokenMattermostClientOptions } from './types.js';
 
@@ -40,8 +40,11 @@ export class MattermostClient {
             const client = new MattermostClient({ url: options.url, token: options.auth.token });
             // validate
             const me = client.api.getMe();
-            await me.catch(() => {
-                throw new Error('Invalid Mattermost personal access token');
+            await me.catch((error: unknown) => {
+                if (error instanceof ClientError && (error.status_code === 401 || error.status_code === 403)) {
+                    throw new Error('Invalid Mattermost personal access token');
+                }
+                throw error;
             });
             return client;
         }
