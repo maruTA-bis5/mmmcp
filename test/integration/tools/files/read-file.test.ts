@@ -56,7 +56,19 @@ describe('read_file tool', () => {
             expect(result.content).lengthOf(1);
             const expectedFile = await client.downloadFile(fileId as string);
             const expectedRepresentation = await safeFileRepresentation(expectedFile);
-            expect(result.content[0]?.text).toEqual(JSON.stringify(expectedRepresentation, null, 2));
+            const labels: Record<string, string> = {
+                file_name: 'File Name',
+                content_type: 'Content Type',
+                size_bytes: 'Size Bytes',
+                truncated: 'Truncated',
+                binary: 'Binary',
+                message: 'Message',
+                content: 'Content',
+            };
+            const expectedContent = Object.entries(expectedRepresentation)
+                .map(([key, value]) => `${labels[key] ?? key}: ${typeof value === 'string' ? value : String(value)}`)
+                .join('\n');
+            expect(result.content[0]?.text).toEqual(expectedContent);
         } finally {
             await client.api.deleteTeam(team.id);
         }
