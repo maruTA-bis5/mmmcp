@@ -17,7 +17,7 @@ export class WhoamiTool extends Tool<EmptyInput, ToolResult> {
 
 async function whoami(client: MattermostClient): Promise<ToolResult> {
     const profile: UserProfile = await client.api.getMe();
-  return toolTextResult(`User ID: ${profile.id}
+    return toolTextResult(`User ID: ${profile.id}
 Username: ${profile.username}
 Nickname: ${profile.nickname}
 First Name: ${profile.first_name}

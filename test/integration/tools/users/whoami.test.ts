@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
+import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
 import { WhoamiTool } from '../../../../src/tools/users/whoami.js';
 import { getMattermostUrl, getUserAccessToken } from '../../testShared.js';
-import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
 
 describe('whoami tool', async () => {
     it('should return the authenticated user profile', async () => {
