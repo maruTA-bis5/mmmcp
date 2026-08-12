@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, paginationSchema, type ToolServer } from '../shared.js';
+import { execute, idSchema, paginationSchema, type ToolResult } from '../shared.js';
+import { Tool } from '../tool.js';
 
 const inputSchema = {
     channel_id: idSchema.describe('Channel ID'),
@@ -10,14 +11,20 @@ const inputSchema = {
     fetch_threads: z.boolean().optional().describe('Include thread metadata'),
 };
 
-export function registerReadChannelTool(server: ToolServer, client: MattermostClient): void {
-    server.registerTool(
-        'read_channel',
-        {
+export class ReadChannelTool extends Tool<typeof inputSchema, ToolResult> {
+    constructor(client: MattermostClient) {
+        super(client, {
+            name: 'read_channel',
             description: 'Read recent posts in a Mattermost channel.',
             inputSchema,
-        },
-        async ({ channel_id, page, per_page, fetch_threads }: z.infer<z.ZodObject<typeof inputSchema>>) =>
-            execute(() => client.api.getPosts(channel_id, page, per_page, fetch_threads)),
-    );
+            handler: readChannel,
+        });
+    }
+}
+
+async function readChannel(
+    client: MattermostClient,
+    { channel_id, page, per_page, fetch_threads }: z.infer<z.ZodObject<typeof inputSchema>>,
+): Promise<ToolResult> {
+    return execute(() => client.api.getPosts(channel_id, page, per_page, fetch_threads));
 }
