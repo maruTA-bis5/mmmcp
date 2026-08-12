@@ -42,11 +42,16 @@ describe('get_channel_info tool', () => {
             const result: ToolResult = await execute(() =>
                 getChannelInfoTool.definition.handler(client, { channel_id: channel.id }),
             );
-            const expectedChannel = await client.api.getChannel(channel.id);
-
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            expect(result.content[0]?.text).toEqual(JSON.stringify(expectedChannel, null, 2));
+            const expectedContent = `Channel ID: ${channel.id}
+Team ID: ${channel.team_id}
+Display Name: ${channel.display_name}
+Name: ${channel.name}
+Type: ${channel.type}
+Purpose: ${channel.purpose}
+Header: ${channel.header}`;
+            expect(result.content[0]?.text).toEqual(expectedContent);
         } finally {
             await client.api.deleteTeam(team.id);
         }
