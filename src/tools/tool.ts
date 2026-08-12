@@ -5,15 +5,19 @@ import { execute, type ToolResult, type ToolServer } from './shared.js';
 export type EmptyInput = { [key: string]: never };
 export type ToolOutput = ToolResult | unknown;
 export type ToolDefinition<Input extends z.ZodRawShape, Output extends ToolOutput> = {
-    name: string;
-    description: string;
-    inputSchema: Input;
-    handler: (client: MattermostClient, input: z.infer<z.ZodObject<Input>>) => Promise<Output>;
+    readonly name: string;
+    readonly description: string;
+    readonly inputSchema: Input;
+    readonly handler: (client: MattermostClient, input: z.infer<z.ZodObject<Input>>) => Promise<Output>;
 };
-export type Tool<Input extends z.ZodRawShape, Output extends ToolOutput> = {
+export class Tool<Input extends z.ZodRawShape, Output extends ToolOutput> {
     readonly client: MattermostClient;
     readonly definition: ToolDefinition<Input, Output>;
-};
+    constructor(client: MattermostClient, definition: ToolDefinition<Input, Output>) {
+        this.client = client;
+        this.definition = definition;
+    }
+}
 
 export function registerTool<Input extends z.ZodRawShape, Output extends ToolOutput>(
     server: ToolServer,

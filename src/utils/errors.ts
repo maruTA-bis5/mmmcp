@@ -1,6 +1,7 @@
 import { ClientError } from '@mattermost/client';
 
-export interface ToolError {
+export type ToolError = ToolErrorObj | string;
+export interface ToolErrorObj {
     code: string;
     message: string;
     details?: unknown;
@@ -103,14 +104,16 @@ export function toToolError(error: unknown): ToolError {
         };
     }
     if (error instanceof Error) {
-        return { code: 'INTERNAL_ERROR', message: error.message };
+        return error.message;
     }
     return { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' };
 }
 
 export function toolErrorResult(error: unknown) {
+    const toolError = toToolError(error);
+    const text = typeof toolError === 'string' ? toolError : JSON.stringify(toolError);
     return {
-        content: [{ type: 'text' as const, text: JSON.stringify(toToolError(error)) }],
+        content: [{ type: 'text' as const, text }],
         isError: true,
     };
 }

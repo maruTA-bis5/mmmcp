@@ -7,7 +7,7 @@ export type ToolResult = {
     content: Array<{ type: 'text'; text: string }>;
     isError?: boolean;
 };
-const toolResultSchema = z.object({
+export const ToolResultSchema = z.object({
     content: z.array(z.object({ type: z.literal('text'), text: z.string() })),
     isError: z.boolean().exactOptional(),
 });
@@ -31,19 +31,19 @@ export const paginationSchema = {
 };
 
 export async function execute(operation: () => Promise<unknown>): Promise<ToolResult> {
-    try {
-        return textResult(await operation());
-    } catch (error) {
-        return toolErrorResult(error);
-    }
+    return Promise.resolve().then(operation).then(textResult).catch(toolErrorResult);
 }
 
-export function textResult(value: unknown): ToolResult {
-    const parsed = toolResultSchema.safeParse(value);
+function textResult(value: unknown): ToolResult {
+    const parsed = ToolResultSchema.safeParse(value);
     if (parsed.success) {
         return parsed.data;
     }
     return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
+}
+
+export function toolTextResult(text: string): ToolResult {
+    return { content: [{ type: 'text', text }] };
 }
 
 export async function safeFileRepresentation(file: DownloadedFile): Promise<Record<string, unknown>> {
