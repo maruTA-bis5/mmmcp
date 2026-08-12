@@ -17,6 +17,9 @@ describe('get_user_teams tool', () => {
 
         expect(ToolResultSchema.safeParse(result).success).toBe(true);
         expect(result.content).lengthOf(1);
-        expect(result.content[0]?.text).toEqual(JSON.stringify(memberships, null, 2));
+        const expectedContent = memberships
+            .map(membership => `Team ID: ${membership.team_id}\nRoles: ${membership.roles}`)
+            .join('\n\n');
+        expect(result.content[0]?.text).toEqual(expectedContent);
     });
 });
