@@ -1,8 +1,9 @@
+import type { Team } from '@mattermost/types/teams';
 import type { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = { team_id: idSchema.describe('Team ID') };
@@ -22,5 +23,12 @@ async function getTeamInfo(
     client: MattermostClient,
     { team_id }: z.infer<z.ZodObject<typeof inputSchema>>,
 ): Promise<ToolResult> {
-    return execute(() => client.api.getTeam(team_id));
+    return execute(async () => {
+        const team: Team = await client.api.getTeam(team_id);
+        return toolTextResult(`Team ID: ${team.id}
+    Display Name: ${team.display_name}
+    Name: ${team.name}
+    Description: ${team.description}
+    Type: ${team.type}`);
+    });
 }

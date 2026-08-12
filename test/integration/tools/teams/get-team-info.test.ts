@@ -34,10 +34,13 @@ describe('get_team_info tool', () => {
             const result: ToolResult = await execute(() =>
                 getTeamInfoTool.definition.handler(client, { team_id: team.id }),
             );
-            const expected = await client.api.getTeam(team.id);
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            expect(result.content[0]?.text).toEqual(JSON.stringify(expected, null, 2));
+            expect(result.content[0]?.text).toEqual(`Team ID: ${team.id}
+    Display Name: ${team.display_name}
+    Name: ${team.name}
+    Description: ${team.description}
+    Type: ${team.type}`);
         } finally {
             await client.api.deleteTeam(team.id);
         }
