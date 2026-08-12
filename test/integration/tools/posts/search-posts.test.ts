@@ -1,3 +1,4 @@
+import type { Post, PostSearchResults } from '@mattermost/types/posts';
 import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
@@ -45,8 +46,19 @@ describe('search_posts tool', () => {
 
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            const posts = await client.api.searchPostsWithParams(team.id, { terms: searchTerm });
-            expect(result.content[0]?.text).toEqual(JSON.stringify(posts, null, 2));
+            const searchResults: PostSearchResults = await client.api.searchPostsWithParams(team.id, {
+                terms: searchTerm,
+            });
+            const posts = searchResults.order
+                .map(postId => searchResults.posts[postId])
+                .filter((post): post is Post => post !== undefined);
+            const expectedContent = posts
+                .map(
+                    post =>
+                        `Post ID: ${post.id}\nChannel ID: ${post.channel_id}\nUser ID: ${post.user_id}\nMessage: ${post.message}`,
+                )
+                .join('\n\n');
+            expect(result.content[0]?.text).toEqual(expectedContent);
         } finally {
             await client.api.deleteTeam(team.id);
         }
