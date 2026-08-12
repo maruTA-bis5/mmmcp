@@ -33,21 +33,18 @@ describe('send_group_message tool', () => {
                 message,
             };
 
-            const result: ToolResult = await execute(() =>
-                sendGroupMessageTool.definition.handler(client, input),
-            );
+            const result: ToolResult = await execute(() => sendGroupMessageTool.definition.handler(client, input));
 
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
             const posts = await client.api.getPosts(channel.id, 0, 100);
             const post = Object.values(posts.posts).find(item => item.message === input.message);
             expect(post).toBeDefined();
-            expect(JSON.parse(result.content[0]?.text ?? '')).toMatchObject({
-                id: post?.id,
-                channel_id: channel.id,
-                user_id: me.id,
-                message: input.message,
-            });
+            expect(result.content[0]?.text).toEqual(`Post ID: ${post?.id}
+Channel ID: ${post?.channel_id}
+User ID: ${post?.user_id}
+Message: ${post?.message}
+Root ID: ${post?.root_id}`);
             const members = await client.api.getChannelMembers(channel.id, 0, 100);
             expect(members.map(member => member.user_id)).toEqual(
                 expect.arrayContaining([me.id, user.id, groupUser.id]),
