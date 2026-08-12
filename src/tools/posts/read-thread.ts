@@ -1,9 +1,9 @@
+import type { PaginatedPostList, Post } from '@mattermost/types/posts';
 import { z } from 'zod';
-import type { Post, PaginatedPostList } from '@mattermost/types/posts';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = {
@@ -26,5 +26,18 @@ async function readThread(
     client: MattermostClient,
     { post_id, fetch_threads }: z.infer<z.ZodObject<typeof inputSchema>>,
 ): Promise<ToolResult> {
-    return execute(() => client.api.getPostThread(post_id, fetch_threads));
+    return execute(async () => {
+        const thread: PaginatedPostList = await client.api.getPostThread(post_id, fetch_threads);
+        const posts = thread.order
+            .map(threadPostId => thread.posts[threadPostId])
+            .filter((post): post is Post => post !== undefined);
+        return toolTextResult(
+            posts
+                .map(
+                    post =>
+                        `Post ID: ${post.id}\nUser ID: ${post.user_id}\nRoot ID: ${post.root_id}\nMessage: ${post.message}`,
+                )
+                .join('\n\n'),
+        );
+    });
 }
