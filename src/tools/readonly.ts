@@ -3,7 +3,7 @@ import type { MattermostClient } from '../mattermost/client.js';
 import { registerGetChannelInfoTool } from './channels/get-channel-info.js';
 import { registerGetChannelMembersTool } from './channels/get-channel-members.js';
 import { registerGetUserChannelsTool } from './channels/get-user-channels.js';
-import { registerReadFileTool } from './files/read-file.js';
+import { ReadFileTool } from './files/read-file.js';
 import { registerReadChannelTool } from './posts/read-channel.js';
 import { registerReadThreadTool } from './posts/read-thread.js';
 import { registerSearchPostsTool } from './posts/search-posts.js';
@@ -28,5 +28,5 @@ export function registerReadonlyTools(server: ToolServer, client: MattermostClie
     registerReadThreadTool(server, client);
     registerSearchUsersTool(server, client);
     registerSearchPostsTool(server, client);
-    registerReadFileTool(server, client);
+    registerTool(server, new ReadFileTool(client));
 }
