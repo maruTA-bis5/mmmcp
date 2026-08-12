@@ -31,8 +31,7 @@ export const paginationSchema = {
 };
 
 export async function execute(operation: () => Promise<unknown>): Promise<ToolResult> {
-    const result: Promise<unknown> = operation();
-    return result.then(textResult).catch(toolErrorResult);
+    return Promise.resolve().then(operation).then(textResult).catch(toolErrorResult);
 }
 
 function textResult(value: unknown): ToolResult {
