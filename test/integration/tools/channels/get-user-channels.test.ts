@@ -1,8 +1,8 @@
 import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
 import { GetUserChannelsTool } from '../../../../src/tools/channels/get-user-channels.js';
+import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
 import { getAdminAccessToken, getMattermostUrl, getUserAccessToken } from '../../testShared.js';
 
 describe('get_user_channels tool', () => {
@@ -52,7 +52,13 @@ describe('get_user_channels tool', () => {
 
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            expect(result.content[0]?.text).toEqual(JSON.stringify(channels, null, 2));
+            const expectedContent = channels
+                .map(
+                    channel =>
+                        `Channel ID: ${channel.id}\nDisplay Name: ${channel.display_name}\nName: ${channel.name}\nType: ${channel.type}`,
+                )
+                .join('\n\n');
+            expect(result.content[0]?.text).toEqual(expectedContent);
         } finally {
             await adminClient.api.deleteTeam(team.id);
         }

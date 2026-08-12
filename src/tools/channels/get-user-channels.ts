@@ -1,8 +1,9 @@
+import type { ServerChannel } from '@mattermost/types/channels';
 import type { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = { team_id: idSchema.describe('Team ID') };
@@ -22,5 +23,15 @@ async function getUserChannels(
     client: MattermostClient,
     { team_id }: z.infer<z.ZodObject<typeof inputSchema>>,
 ): Promise<ToolResult> {
-    return execute(() => client.api.getMyChannels(team_id));
+    return execute(async () => {
+        const channels: ServerChannel[] = await client.api.getMyChannels(team_id);
+        return toolTextResult(
+            channels
+                .map(
+                    channel =>
+                        `Channel ID: ${channel.id}\nDisplay Name: ${channel.display_name}\nName: ${channel.name}\nType: ${channel.type}`,
+                )
+                .join('\n\n'),
+        );
+    });
 }
