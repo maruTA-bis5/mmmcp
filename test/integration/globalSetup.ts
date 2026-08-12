@@ -1,40 +1,40 @@
-import { Client4 } from "@mattermost/client";
-import { UserProfile } from "@mattermost/types/users";
-import * as child_process from "node:child_process";
-import * as util from "node:util";
-import type { TestProject } from "vitest/node";
+import * as child_process from 'node:child_process';
+import * as util from 'node:util';
+import { Client4 } from '@mattermost/client';
+import type { UserProfile } from '@mattermost/types/users';
+import type { TestProject } from 'vitest/node';
 
 const execFile = util.promisify(child_process.execFile);
-const mattermostUrl = "http://127.0.0.1:8065";
+const mattermostUrl = 'http://127.0.0.1:8065';
 
 const getClient = (token: string): Client4 => {
     const client = new Client4();
     client.setUrl(mattermostUrl);
     client.setToken(token);
     return client;
-}
+};
 
 export async function setup(project: TestProject): Promise<void> {
-    await execFile("docker", ["compose", "-f", "compose-test.yml", "up", "-d", "--wait"]);
+    await execFile('docker', ['compose', '-f', 'compose-test.yml', 'up', '-d', '--wait']);
 
-    const setupClient = getClient("");
-    let adminUser: UserProfile = newUserProfile("admin", "admin@example.com");
-    adminUser.roles = "system_admin system_user";
+    const setupClient = getClient('');
+    let adminUser: UserProfile = newUserProfile('admin', 'admin@example.com');
+    adminUser.roles = 'system_admin system_user';
     setupClient.logToConsole = true;
-    adminUser = await setupClient.createUser(adminUser, "", "");
-    const adminClient = getClient("");
-    await adminClient.login("admin", "admin-password");
-    const adminToken = await adminClient.createUserAccessToken(adminUser.id, "admin-access-token");
-    const adminAccessToken = adminToken.token ?? "invalid";
+    adminUser = await setupClient.createUser(adminUser, '', '');
+    const adminClient = getClient('');
+    await adminClient.login('admin', 'admin-password');
+    const adminToken = await adminClient.createUserAccessToken(adminUser.id, 'admin-access-token');
+    const adminAccessToken = adminToken.token ?? 'invalid';
 
-    let generalUser = newUserProfile("general", "general@example.com");
-    generalUser = await adminClient.createUser(generalUser, "", "");
-    await adminClient.updateUserRoles(generalUser.id, "system_user system_user_access_token system_post_all");
-    const userClient = getClient("");
-    await userClient.login("general", "general-password");
-    
-    const userToken = await userClient.createUserAccessToken(generalUser.id, "general-access-token");
-    const userAccessToken = userToken.token ?? "invalid";
+    let generalUser = newUserProfile('general', 'general@example.com');
+    generalUser = await adminClient.createUser(generalUser, '', '');
+    await adminClient.updateUserRoles(generalUser.id, 'system_user system_user_access_token system_post_all');
+    const userClient = getClient('');
+    await userClient.login('general', 'general-password');
+
+    const userToken = await userClient.createUserAccessToken(generalUser.id, 'general-access-token');
+    const userAccessToken = userToken.token ?? 'invalid';
 
     await adminClient.logout();
     await userClient.logout();
@@ -44,11 +44,11 @@ export async function setup(project: TestProject): Promise<void> {
     await getClient(userAccessToken).getMe();
 
     // share to each test
-    project.provide("adminAccessToken", adminAccessToken);
-    project.provide("userAccessToken", userAccessToken);
-    project.provide("mattermostUrl", mattermostUrl);
+    project.provide('adminAccessToken', adminAccessToken);
+    project.provide('userAccessToken', userAccessToken);
+    project.provide('mattermostUrl', mattermostUrl);
 
-    console.log("Docker compose up completed.");
+    console.log('Docker compose up completed.');
 }
 
 declare module 'vitest' {
@@ -60,41 +60,41 @@ declare module 'vitest' {
 }
 
 export async function teardown(): Promise<void> {
-    const keepEnvs : boolean = process.env.KEEP_TEST_ENVIRONMENT === "true";
+    const keepEnvs: boolean = process.env.KEEP_TEST_ENVIRONMENT === 'true';
     if (keepEnvs) {
-        console.log("Keeping test environment.");
+        console.log('Keeping test environment.');
         return;
     }
-    await execFile("docker", ["compose", "-f", "compose-test.yml", "down", "--volumes"]);
-    console.log("Docker compose down completed.");
+    await execFile('docker', ['compose', '-f', 'compose-test.yml', 'down', '--volumes']);
+    console.log('Docker compose down completed.');
 }
 
 function newUserProfile(username: string, email: string): UserProfile {
     return {
-        id: "",
-        username: username, 
-        password: username + "-password",
+        id: '',
+        username: username,
+        password: `${username}-password`,
         nickname: username,
         first_name: username,
-        last_name: "User",
+        last_name: 'User',
         email: email,
-        position: "",
+        position: '',
         mfa_active: false,
         last_activity_at: 0,
         is_bot: false,
-        bot_description: "",
-        terms_of_service_id: "",
+        bot_description: '',
+        terms_of_service_id: '',
         terms_of_service_create_at: 0,
         create_at: 0,
         update_at: 0,
         delete_at: 0,
-        roles: "system_user",
-        auth_data: "",
-        auth_service: "",
+        roles: 'system_user',
+        auth_data: '',
+        auth_service: '',
         last_password_update: 0,
         last_picture_update: 0,
-        locale: "en",
-        timezone: { automaticTimezone: "", manualTimezone: "", useAutomaticTimezone: ""},
+        locale: 'en',
+        timezone: { automaticTimezone: '', manualTimezone: '', useAutomaticTimezone: '' },
         notify_props: {
             desktop: 'default',
             desktop_sound: 'default',

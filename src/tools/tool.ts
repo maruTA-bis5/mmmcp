@@ -1,8 +1,8 @@
 import type { z } from 'zod';
 import type { MattermostClient } from '../mattermost/client.js';
-import { execute, ToolResult, type ToolServer } from './shared.js';
+import { execute, type ToolResult, type ToolServer } from './shared.js';
 
-export type EmptyInput = {[key: string]: never};
+export type EmptyInput = { [key: string]: never };
 export type ToolOutput = ToolResult | unknown;
 export type ToolDefinition<Input extends z.ZodRawShape, Output extends ToolOutput> = {
     name: string;
@@ -15,13 +15,16 @@ export type Tool<Input extends z.ZodRawShape, Output extends ToolOutput> = {
     readonly definition: ToolDefinition<Input, Output>;
 };
 
-export function registerTool<Input extends z.ZodRawShape, Output extends ToolOutput>(server: ToolServer, tool: Tool<Input, Output>) {
+export function registerTool<Input extends z.ZodRawShape, Output extends ToolOutput>(
+    server: ToolServer,
+    tool: Tool<Input, Output>,
+) {
     server.registerTool(
         tool.definition.name,
         {
             description: tool.definition.description,
             inputSchema: tool.definition.inputSchema,
         },
-        async (input: z.infer<z.ZodObject<Input>>) => execute(tool.definition.handler.bind(null, tool.client, input))
+        async (input: z.infer<z.ZodObject<Input>>) => execute(tool.definition.handler.bind(null, tool.client, input)),
     );
-};
+}

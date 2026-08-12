@@ -8,9 +8,9 @@ import { registerCreatePostTool } from './posts/create-post.js';
 import type { ToolServer } from './shared.js';
 
 export function registerWritableTools(server: ToolServer, client: MattermostClient): void {
-  registerCreateChannelTool(server, client);
-  registerAddUserToChannelTool(server, client);
-  registerCreatePostTool(server, client);
-  registerSendDmTool(server, client);
-  registerSendGroupMessageTool(server, client);
+    registerCreateChannelTool(server, client);
+    registerAddUserToChannelTool(server, client);
+    registerCreatePostTool(server, client);
+    registerSendDmTool(server, client);
+    registerSendGroupMessageTool(server, client);
 }
