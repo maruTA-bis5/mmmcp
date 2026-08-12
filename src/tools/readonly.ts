@@ -11,14 +11,14 @@ import type { ToolServer } from './shared.js';
 import { registerGetTeamInfoTool } from './teams/get-team-info.js';
 import { registerGetTeamMembersTool } from './teams/get-team-members.js';
 import { registerTool } from './tool.js';
-import { registerGetUserTeamsTool } from './users/get-user-teams.js';
+import { GetUserTeamsTool } from './users/get-user-teams.js';
 import { registerSearchUsersTool } from './users/search-users.js';
 import { WhoamiTool } from './users/whoami.js';
 
 export function registerReadonlyTools(server: ToolServer, client: MattermostClient): void {
     registerTool(server, new WhoamiTool(client));
 
-    registerGetUserTeamsTool(server, client);
+    registerTool(server, new GetUserTeamsTool(client));
     registerGetUserChannelsTool(server, client);
     registerGetChannelInfoTool(server, client);
     registerGetChannelMembersTool(server, client);
