@@ -17,7 +17,7 @@ export class Tool<Input extends z.ZodRawShape, Output extends ToolOutput> {
         this.client = client;
         this.definition = definition;
     }
-};
+}
 
 export function registerTool<Input extends z.ZodRawShape, Output extends ToolOutput>(
     server: ToolServer,
