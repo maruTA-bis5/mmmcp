@@ -50,12 +50,12 @@ describe('add_user_to_channel tool', () => {
 
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            expect(JSON.parse(result.content[0]?.text ?? '')).toMatchObject({
-                channel_id: channel.id,
-                user_id: user.id,
-            });
             const members = await client.api.getChannelMembers(channel.id, 0, 100);
-            expect(members.some(member => member.user_id === user.id)).toBe(true);
+            const membership = members.find(member => member.user_id === user.id);
+            expect(membership).toBeDefined();
+            expect(result.content[0]?.text).toEqual(`Channel ID: ${membership?.channel_id}
+User ID: ${membership?.user_id}
+Roles: ${membership?.roles}`);
         } finally {
             await client.api.deleteTeam(team.id);
         }

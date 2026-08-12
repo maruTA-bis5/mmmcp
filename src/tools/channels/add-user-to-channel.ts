@@ -1,8 +1,9 @@
+import type { ChannelMembership } from '@mattermost/types/channels';
 import type { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = {
@@ -26,5 +27,10 @@ async function addUserToChannel(
     client: MattermostClient,
     { channel_id, user_id, post_root_id }: z.infer<z.ZodObject<typeof inputSchema>>,
 ): Promise<ToolResult> {
-    return execute(() => client.api.addToChannel(user_id, channel_id, post_root_id));
+    return execute(async () => {
+        const membership: ChannelMembership = await client.api.addToChannel(user_id, channel_id, post_root_id);
+        return toolTextResult(`Channel ID: ${membership.channel_id}
+User ID: ${membership.user_id}
+Roles: ${membership.roles}`);
+    });
 }
