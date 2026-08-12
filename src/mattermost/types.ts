@@ -27,6 +27,7 @@ export type MattermostApi = Pick<
     | 'createChannel'
     | 'addToChannel'
     | 'createPost'
+    | 'deletePost'
     | 'createDirectChannel'
     | 'createGroupChannel'
 >;
