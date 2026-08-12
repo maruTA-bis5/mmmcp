@@ -1,9 +1,9 @@
-import { z } from 'zod';
 import type { UserProfile } from '@mattermost/types/users';
+import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = {
@@ -31,5 +31,15 @@ async function searchUsers(
     client: MattermostClient,
     { term, ...options }: z.infer<z.ZodObject<typeof inputSchema>>,
 ): Promise<ToolResult> {
-    return execute(() => client.api.searchUsers(term, options));
+    return execute(async () => {
+        const users: UserProfile[] = await client.api.searchUsers(term, options);
+        return toolTextResult(
+            users
+                .map(
+                    user =>
+                        `User ID: ${user.id}\nUsername: ${user.username}\nNickname: ${user.nickname}\nFirst Name: ${user.first_name}\nLast Name: ${user.last_name}\nEmail: ${user.email}`,
+                )
+                .join('\n\n'),
+        );
+    });
 }
