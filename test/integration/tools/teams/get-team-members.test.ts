@@ -37,8 +37,11 @@ describe('get_team_members tool', () => {
 
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            const expectedMembers = await client.api.getTeamMembers(team.id);
-            expect(result.content[0]?.text).toEqual(JSON.stringify(expectedMembers, null, 2));
+            const members = await client.api.getTeamMembers(team.id);
+            const expectedContent = members
+                .map(member => `User ID: ${member.user_id}\nTeam ID: ${member.team_id}\nRoles: ${member.roles}`)
+                .join('\n\n');
+            expect(result.content[0]?.text).toEqual(expectedContent);
         } finally {
             await client.api.deleteTeam(team.id);
         }
