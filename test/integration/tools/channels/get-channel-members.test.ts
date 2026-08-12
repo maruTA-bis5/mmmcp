@@ -43,7 +43,13 @@ describe('get_channel_members tool', () => {
             );
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            expect(result.content[0]?.text).toEqual(JSON.stringify(members, null, 2));
+            const expectedContent = members
+                .map(
+                    member =>
+                        `User ID: ${member.user_id}\nChannel ID: ${member.channel_id}\nRoles: ${member.roles}\nChannel Admin: ${member.scheme_admin}\nChannel User: ${member.scheme_user}`,
+                )
+                .join('\n\n');
+            expect(result.content[0]?.text).toEqual(expectedContent);
         } finally {
             await client.api.deleteTeam(team.id);
         }
