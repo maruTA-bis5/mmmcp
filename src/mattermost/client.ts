@@ -37,7 +37,13 @@ export class MattermostClient {
 
     public static async create(options: MattermostClientOptions): Promise<MattermostClient> {
         if ('token' in options.auth) {
-            return new MattermostClient({ url: options.url, token: options.auth.token });
+            const client = new MattermostClient({ url: options.url, token: options.auth.token });
+            // validate
+            const me = client.api.getMe();
+            await me.catch(() => {
+                throw new Error('Invalid Mattermost personal access token');
+            });
+            return client;
         }
 
         const client = new Client4();
