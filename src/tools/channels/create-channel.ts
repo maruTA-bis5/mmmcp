@@ -1,8 +1,9 @@
+import type { ServerChannel } from '@mattermost/types/channels';
 import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = {
@@ -34,14 +35,21 @@ async function createChannel(
     client: MattermostClient,
     { team_id, name, display_name, type, header, purpose }: z.infer<z.ZodObject<typeof inputSchema>>,
 ): Promise<ToolResult> {
-    return execute(() =>
-        client.api.createChannel({
+    return execute(async () => {
+        const channel: ServerChannel = await client.api.createChannel({
             team_id,
             name,
             display_name,
             type,
             ...(header === undefined ? {} : { header }),
             ...(purpose === undefined ? {} : { purpose }),
-        }),
-    );
+        });
+        return toolTextResult(`Channel ID: ${channel.id}
+Team ID: ${channel.team_id}
+Display Name: ${channel.display_name}
+Name: ${channel.name}
+Type: ${channel.type}
+Header: ${channel.header}
+Purpose: ${channel.purpose}`);
+    });
 }

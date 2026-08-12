@@ -40,30 +40,16 @@ describe('create_channel tool', () => {
                 type: 'O',
             };
             const result: ToolResult = await execute(() => createChannelTool.definition.handler(client, input));
-            const channel = JSON.parse(result.content[0]?.text ?? '{}') as {
-                id?: string;
-                team_id?: string;
-                type?: string;
-                display_name?: string;
-                name?: string;
-            };
-
             expect(ToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
-            expect(channel).toMatchObject({
-                team_id: team.id,
-                type: input.type,
-                display_name: input.display_name,
-                name: input.name,
-            });
-            expect(channel.id).toEqual(expect.any(String));
-            await expect(client.api.getChannel(channel.id ?? '')).resolves.toMatchObject({
-                id: channel.id,
-                team_id: input.team_id,
-                type: input.type,
-                display_name: input.display_name,
-                name: input.name,
-            });
+            const channel = await client.api.getChannelByName(team.id, input.name);
+            expect(result.content[0]?.text).toEqual(`Channel ID: ${channel.id}
+Team ID: ${channel.team_id}
+Display Name: ${channel.display_name}
+Name: ${channel.name}
+Type: ${channel.type}
+Header: ${channel.header}
+Purpose: ${channel.purpose}`);
         } finally {
             await client.api.deleteTeam(team.id);
         }
