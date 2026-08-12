@@ -16,17 +16,17 @@ import { registerSearchUsersTool } from './users/search-users.js';
 import { WhoamiTool } from './users/whoami.js';
 
 export function registerReadonlyTools(server: ToolServer, client: MattermostClient): void {
-  registerTool(server, new WhoamiTool(client));
+    registerTool(server, new WhoamiTool(client));
 
-  registerGetUserTeamsTool(server, client);
-  registerGetUserChannelsTool(server, client);
-  registerGetChannelInfoTool(server, client);
-  registerGetChannelMembersTool(server, client);
-  registerGetTeamInfoTool(server, client);
-  registerGetTeamMembersTool(server, client);
-  registerReadChannelTool(server, client);
-  registerReadThreadTool(server, client);
-  registerSearchUsersTool(server, client);
-  registerSearchPostsTool(server, client);
-  registerReadFileTool(server, client);
+    registerGetUserTeamsTool(server, client);
+    registerGetUserChannelsTool(server, client);
+    registerGetChannelInfoTool(server, client);
+    registerGetChannelMembersTool(server, client);
+    registerGetTeamInfoTool(server, client);
+    registerGetTeamMembersTool(server, client);
+    registerReadChannelTool(server, client);
+    registerReadThreadTool(server, client);
+    registerSearchUsersTool(server, client);
+    registerSearchPostsTool(server, client);
+    registerReadFileTool(server, client);
 }
