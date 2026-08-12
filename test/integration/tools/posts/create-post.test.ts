@@ -50,11 +50,11 @@ describe('create_post tool', () => {
             const posts = await client.api.getPosts(channel.id, 0, 100);
             const post = Object.values(posts.posts).find(item => item.message === input.message);
             expect(post).toBeDefined();
-            expect(JSON.parse(result.content[0]?.text ?? '')).toMatchObject({
-                id: post?.id,
-                channel_id: channel.id,
-                message: input.message,
-            });
+            expect(result.content[0]?.text).toEqual(`Post ID: ${post?.id}
+Channel ID: ${post?.channel_id}
+User ID: ${post?.user_id}
+Message: ${post?.message}
+Root ID: ${post?.root_id}`);
         } finally {
             await client.api.deleteTeam(team.id);
         }
