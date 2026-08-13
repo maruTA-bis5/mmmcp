@@ -29,14 +29,13 @@ describe('get_channel_info tool', () => {
             scheme_id: '',
             group_constrained: false,
         } satisfies Team);
-        const channel = await client.api.createChannel({
-            team_id: team.id,
-            name: `integration-channel-${suffix}`,
-            display_name: `Integration Channel ${suffix}`,
-            type: 'O',
-        });
-
         try {
+            const channel = await client.api.createChannel({
+                team_id: team.id,
+                name: `integration-channel-${suffix}`,
+                display_name: `Integration Channel ${suffix}`,
+                type: 'O',
+            });
             const getChannelInfoTool = new GetChannelInfoTool(client);
 
             const result: ToolResult = await execute(() =>
