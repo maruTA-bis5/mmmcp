@@ -9,7 +9,7 @@ import { registerReadThreadTool } from './posts/read-thread.js';
 import { registerSearchPostsTool } from './posts/search-posts.js';
 import type { ToolServer } from './shared.js';
 import { registerGetTeamInfoTool } from './teams/get-team-info.js';
-import { registerGetTeamMembersTool } from './teams/get-team-members.js';
+import { GetTeamMembersTool } from './teams/get-team-members.js';
 import { registerTool } from './tool.js';
 import { registerGetUserTeamsTool } from './users/get-user-teams.js';
 import { registerSearchUsersTool } from './users/search-users.js';
@@ -23,7 +23,7 @@ export function registerReadonlyTools(server: ToolServer, client: MattermostClie
     registerTool(server, new GetChannelInfoTool(client));
     registerGetChannelMembersTool(server, client);
     registerGetTeamInfoTool(server, client);
-    registerGetTeamMembersTool(server, client);
+    registerTool(server, new GetTeamMembersTool(client));
     registerReadChannelTool(server, client);
     registerReadThreadTool(server, client);
     registerSearchUsersTool(server, client);
