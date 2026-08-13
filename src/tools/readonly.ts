@@ -6,7 +6,7 @@ import { GetUserChannelsTool } from './channels/get-user-channels.js';
 import { registerReadFileTool } from './files/read-file.js';
 import { registerReadChannelTool } from './posts/read-channel.js';
 import { registerReadThreadTool } from './posts/read-thread.js';
-import { registerSearchPostsTool } from './posts/search-posts.js';
+import { SearchPostsTool } from './posts/search-posts.js';
 import type { ToolServer } from './shared.js';
 import { registerGetTeamInfoTool } from './teams/get-team-info.js';
 import { registerGetTeamMembersTool } from './teams/get-team-members.js';
@@ -27,6 +27,6 @@ export function registerReadonlyTools(server: ToolServer, client: MattermostClie
     registerReadChannelTool(server, client);
     registerReadThreadTool(server, client);
     registerSearchUsersTool(server, client);
-    registerSearchPostsTool(server, client);
+    registerTool(server, new SearchPostsTool(client));
     registerReadFileTool(server, client);
 }
