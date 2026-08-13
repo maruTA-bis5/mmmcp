@@ -1,8 +1,10 @@
+import type { UserProfile } from '@mattermost/types/users';
 import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolServer } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
+import { Tool } from '../tool.js';
 
 const inputSchema = {
     term: z.string().min(1).describe('User search text'),
@@ -14,14 +16,30 @@ const inputSchema = {
     limit: z.number().int().min(1).max(200).optional().describe('Maximum results'),
 };
 
-export function registerSearchUsersTool(server: ToolServer, client: MattermostClient): void {
-    server.registerTool(
-        'search_users',
-        {
+export class SearchUsersTool extends Tool<typeof inputSchema, ToolResult> {
+    constructor(client: MattermostClient) {
+        super(client, {
+            name: 'search_users',
             description: 'Search Mattermost users by name, username, nickname, or email.',
             inputSchema,
-        },
-        async ({ term, ...options }: z.infer<z.ZodObject<typeof inputSchema>>) =>
-            execute(() => client.api.searchUsers(term, options)),
-    );
+            handler: searchUsers,
+        });
+    }
+}
+
+async function searchUsers(
+    client: MattermostClient,
+    { term, ...options }: z.infer<z.ZodObject<typeof inputSchema>>,
+): Promise<ToolResult> {
+    return execute(async () => {
+        const users: UserProfile[] = await client.api.searchUsers(term, options);
+        return toolTextResult(
+            users
+                .map(
+                    user =>
+                        `User ID: ${user.id}\nUsername: ${user.username}\nNickname: ${user.nickname}\nFirst Name: ${user.first_name}\nLast Name: ${user.last_name}\nEmail: ${user.email}`,
+                )
+                .join('\n\n'),
+        );
+    });
 }

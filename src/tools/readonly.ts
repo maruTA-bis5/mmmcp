@@ -12,7 +12,7 @@ import { registerGetTeamInfoTool } from './teams/get-team-info.js';
 import { registerGetTeamMembersTool } from './teams/get-team-members.js';
 import { registerTool } from './tool.js';
 import { registerGetUserTeamsTool } from './users/get-user-teams.js';
-import { registerSearchUsersTool } from './users/search-users.js';
+import { SearchUsersTool } from './users/search-users.js';
 import { WhoamiTool } from './users/whoami.js';
 
 export function registerReadonlyTools(server: ToolServer, client: MattermostClient): void {
@@ -26,7 +26,7 @@ export function registerReadonlyTools(server: ToolServer, client: MattermostClie
     registerGetTeamMembersTool(server, client);
     registerReadChannelTool(server, client);
     registerReadThreadTool(server, client);
-    registerSearchUsersTool(server, client);
+    registerTool(server, new SearchUsersTool(client));
     registerSearchPostsTool(server, client);
     registerReadFileTool(server, client);
 }
