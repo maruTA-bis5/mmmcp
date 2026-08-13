@@ -1,8 +1,10 @@
+import type { ServerChannel } from '@mattermost/types/channels';
 import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolServer } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
+import { Tool } from '../tool.js';
 
 const inputSchema = {
     team_id: idSchema.describe('Team ID'),
@@ -18,23 +20,36 @@ const inputSchema = {
     purpose: z.string().max(250).optional().describe('Optional channel purpose'),
 };
 
-export function registerCreateChannelTool(server: ToolServer, client: MattermostClient): void {
-    server.registerTool(
-        'create_channel',
-        {
+export class CreateChannelTool extends Tool<typeof inputSchema, ToolResult> {
+    constructor(client: MattermostClient) {
+        super(client, {
+            name: 'create_channel',
             description: 'Create a public or private Mattermost channel.',
             inputSchema,
-        },
-        async ({ team_id, name, display_name, type, header, purpose }: z.infer<z.ZodObject<typeof inputSchema>>) =>
-            execute(() =>
-                client.api.createChannel({
-                    team_id,
-                    name,
-                    display_name,
-                    type,
-                    ...(header === undefined ? {} : { header }),
-                    ...(purpose === undefined ? {} : { purpose }),
-                }),
-            ),
-    );
+            handler: createChannel,
+        });
+    }
+}
+
+async function createChannel(
+    client: MattermostClient,
+    { team_id, name, display_name, type, header, purpose }: z.infer<z.ZodObject<typeof inputSchema>>,
+): Promise<ToolResult> {
+    return execute(async () => {
+        const channel: ServerChannel = await client.api.createChannel({
+            team_id,
+            name,
+            display_name,
+            type,
+            ...(header === undefined ? {} : { header }),
+            ...(purpose === undefined ? {} : { purpose }),
+        });
+        return toolTextResult(`Channel ID: ${channel.id}
+Team ID: ${channel.team_id}
+Display Name: ${channel.display_name}
+Name: ${channel.name}
+Type: ${channel.type}
+Header: ${channel.header}
+Purpose: ${channel.purpose}`);
+    });
 }
