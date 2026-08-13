@@ -1,8 +1,10 @@
+import type { Post } from '@mattermost/types/posts';
 import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolServer } from '../shared.js';
+import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
+import { Tool } from '../tool.js';
 
 const inputSchema = {
     user_id: idSchema.describe('Recipient user ID'),
@@ -10,22 +12,33 @@ const inputSchema = {
     root_id: idSchema.optional().describe('Optional root post ID for a reply'),
 };
 
-export function registerSendDmTool(server: ToolServer, client: MattermostClient): void {
-    server.registerTool(
-        'send_dm',
-        {
+export class SendDmTool extends Tool<typeof inputSchema, ToolResult> {
+    constructor(client: MattermostClient) {
+        super(client, {
+            name: 'send_dm',
             description: 'Send a direct message to one Mattermost user.',
             inputSchema,
-        },
-        async ({ user_id, message, root_id }: z.infer<z.ZodObject<typeof inputSchema>>) =>
-            execute(async () => {
-                const me = await client.api.getMe();
-                const channel = await client.api.createDirectChannel([me.id, user_id]);
-                return client.api.createPost({
-                    channel_id: channel.id,
-                    message,
-                    ...(root_id === undefined ? {} : { root_id }),
-                });
-            }),
-    );
+            handler: sendDm,
+        });
+    }
+}
+
+async function sendDm(
+    client: MattermostClient,
+    { user_id, message, root_id }: z.infer<z.ZodObject<typeof inputSchema>>,
+): Promise<ToolResult> {
+    return execute(async () => {
+        const me = await client.api.getMe();
+        const channel = await client.api.createDirectChannel([me.id, user_id]);
+        const post: Post = await client.api.createPost({
+            channel_id: channel.id,
+            message,
+            ...(root_id === undefined ? {} : { root_id }),
+        });
+        return toolTextResult(`Post ID: ${post.id}
+Channel ID: ${post.channel_id}
+User ID: ${post.user_id}
+Message: ${post.message}
+Root ID: ${post.root_id}`);
+    });
 }
