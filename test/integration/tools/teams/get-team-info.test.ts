@@ -1,17 +1,22 @@
+import { randomUUID } from 'node:crypto';
 import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { execute, PlainToolResultSchema, type ToolResult } from '../../../../src/tools/shared.js';
-import { GetTeamInfoTool } from '../../../../src/tools/teams/get-team-info.js';
+import { type GetTeamInfoOutput, GetTeamInfoTool } from '../../../../src/tools/teams/get-team-info.js';
 import { getAdminAccessToken, getMattermostUrl } from '../../testShared.js';
+import { expectToolResultIsError, toolTest } from '../toolstestlib.js';
 
-describe('get_team_info tool', () => {
-    it('should return details for a Mattermost team', async () => {
+describe(
+    'get_team_info tool',
+    toolTest(
+        client => new GetTeamInfoTool(client),
+        context => {
+            it('should return details for a Mattermost team', async () => {
         const client = await MattermostClient.create({
             url: getMattermostUrl(),
             auth: { token: getAdminAccessToken() },
         });
-        const suffix = Date.now().toString(36);
+        const suffix = randomUUID().replaceAll('-', '');
         const team = await client.api.createTeam({
             id: '',
             create_at: 0,
@@ -30,19 +35,26 @@ describe('get_team_info tool', () => {
             group_constrained: false,
         } satisfies Team);
         try {
-            const getTeamInfoTool = new GetTeamInfoTool(client);
-            const result: ToolResult = await execute(() =>
-                getTeamInfoTool.definition.handler(client, { team_id: team.id }),
-            );
-            expect(PlainToolResultSchema.safeParse(result).success).toBe(true);
-            expect(result.content).lengthOf(1);
-            expect(result.content[0]?.text).toEqual(`Team ID: ${team.id}
-    Display Name: ${team.display_name}
-    Name: ${team.name}
-    Description: ${team.description}
-    Type: ${team.type}`);
+            const user = await client.api.getUserByUsername('general');
+            await client.api.addToTeam(team.id, user.id);
+            const expected: GetTeamInfoOutput = {
+                teamId: team.id,
+                displayName: team.display_name,
+                name: team.name,
+                description: team.description,
+                type: team.type,
+            };
+            const toolResult = await context.mcpClient.callTool({
+                name: 'get_team_info',
+                arguments: { team_id: team.id },
+            });
+
+            expectToolResultIsError(toolResult).toBeFalsy();
+            expect(toolResult.structuredContent).toEqual(expected);
         } finally {
             await client.api.deleteTeam(team.id);
         }
-    });
-});
+            });
+        },
+    ),
+);
