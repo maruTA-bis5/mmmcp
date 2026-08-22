@@ -6,19 +6,20 @@ import type { MattermostClient } from '../../mattermost/client.js';
 import { idSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
-const inputSchema = { team_id: idSchema.describe('Team ID') };
+const inputSchema = z.strictObject({ team_id: idSchema.describe('Team ID') });
+type GetTeamInfoInput = z.infer<typeof inputSchema>;
 
 export const GetTeamInfoOutputSchema = z.strictObject({
     teamId: idSchema.describe('The team ID'),
     displayName: z.string().describe('The team display name'),
-    name: z.string().describe('The team name'),
-    description: z.string().describe('The team description'),
-    type: z.string().describe('The team type'),
+    name: z.string().describe('The team url-friendly name'),
+    description: z.string().optional().describe('The team description'),
+    type: z.enum(['O', 'I']).describe('The team type. O: Open, I: Invite Only'),
 });
 export type GetTeamInfoOutput = z.infer<typeof GetTeamInfoOutputSchema>;
 
 export class GetTeamInfoTool extends Tool<
-    typeof inputSchema,
+    GetTeamInfoInput,
     GetTeamInfoOutput,
     StructuredToolResult<GetTeamInfoOutput>
 > {
@@ -35,7 +36,7 @@ export class GetTeamInfoTool extends Tool<
 
 async function getTeamInfo(
     client: MattermostClient,
-    { team_id }: z.infer<z.ZodObject<typeof inputSchema>>,
+    { team_id }: GetTeamInfoInput,
 ): Promise<StructuredToolResult<GetTeamInfoOutput>> {
     const team: Team = await client.api.getTeam(team_id);
     const output: GetTeamInfoOutput = {
