@@ -1,12 +1,12 @@
 import type { ServerChannel } from '@mattermost/types/channels';
 import { z } from 'zod';
-
 import type { MattermostClient } from '../../mattermost/client.js';
 
 import { idSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
-const inputSchema = { team_id: idSchema.describe('Team ID') };
+const inputSchema = z.strictObject({ team_id: idSchema.describe('Team ID') });
+type GetUserChannelsInput = z.infer<typeof inputSchema>;
 
 const ChannelSchema = z.strictObject({
     channelId: idSchema.describe('The channel ID'),
@@ -20,7 +20,7 @@ export const GetUserChannelsOutputSchema = z.strictObject({
 export type GetUserChannelsOutput = z.infer<typeof GetUserChannelsOutputSchema>;
 
 export class GetUserChannelsTool extends Tool<
-    typeof inputSchema,
+    GetUserChannelsInput,
     GetUserChannelsOutput,
     StructuredToolResult<GetUserChannelsOutput>
 > {
@@ -37,7 +37,7 @@ export class GetUserChannelsTool extends Tool<
 
 async function getUserChannels(
     client: MattermostClient,
-    { team_id }: z.infer<z.ZodObject<typeof inputSchema>>,
+    { team_id }: GetUserChannelsInput,
 ): Promise<StructuredToolResult<GetUserChannelsOutput>> {
     const channels: ServerChannel[] = await client.api.getMyChannels(team_id);
     const output: GetUserChannelsOutput = {
