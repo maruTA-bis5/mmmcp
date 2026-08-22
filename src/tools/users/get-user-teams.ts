@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { MattermostClient } from '../../mattermost/client.js';
 
 import { execute, type ToolServer } from '../shared.js';
@@ -7,7 +8,7 @@ export function registerGetUserTeamsTool(server: ToolServer, client: MattermostC
         'get_user_teams',
         {
             description: 'List team memberships for the authenticated Mattermost user.',
-            inputSchema: {},
+            inputSchema: z.object({}),
         },
         async () => execute(() => client.api.getMyTeamMembers()),
     );
