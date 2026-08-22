@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
+import { execute, PlainToolResultSchema, type ToolResult } from '../../../../src/tools/shared.js';
 import { WhoamiTool } from '../../../../src/tools/users/whoami.js';
 import { getMattermostUrl, getUserAccessToken } from '../../testShared.js';
 
@@ -15,7 +15,7 @@ describe('whoami tool', async () => {
 
         const profile: ToolResult = await execute(() => whoamiTool.definition.handler(client, {}));
 
-        expect(ToolResultSchema.safeParse(profile).success).toBe(true);
+        expect(PlainToolResultSchema.safeParse(profile).success).toBe(true);
         expect(profile.content).lengthOf(1);
         const expectedContent = `
 User ID: ${me.id}

@@ -2,12 +2,12 @@ import type { Channel } from '@mattermost/types/channels';
 import type { z } from 'zod';
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
+import { execute, idSchema, type PlainToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = { channel_id: idSchema.describe('Channel ID') };
 
-export class GetChannelInfoTool extends Tool<typeof inputSchema, ToolResult> {
+export class GetChannelInfoTool extends Tool<typeof inputSchema, string, PlainToolResult> {
     constructor(client: MattermostClient) {
         super(client, {
             name: 'get_channel_info',
@@ -21,7 +21,7 @@ export class GetChannelInfoTool extends Tool<typeof inputSchema, ToolResult> {
 async function getChannelInfo(
     client: MattermostClient,
     { channel_id }: z.infer<z.ZodObject<typeof inputSchema>>,
-): Promise<ToolResult> {
+): Promise<PlainToolResult> {
     return execute(async () => {
         const channel: Channel = await client.api.getChannel(channel_id);
         return toolTextResult(`Channel ID: ${channel.id}

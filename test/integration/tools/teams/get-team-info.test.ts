@@ -1,7 +1,7 @@
 import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
+import { execute, PlainToolResultSchema, type ToolResult } from '../../../../src/tools/shared.js';
 import { GetTeamInfoTool } from '../../../../src/tools/teams/get-team-info.js';
 import { getAdminAccessToken, getMattermostUrl } from '../../testShared.js';
 
@@ -34,7 +34,7 @@ describe('get_team_info tool', () => {
             const result: ToolResult = await execute(() =>
                 getTeamInfoTool.definition.handler(client, { team_id: team.id }),
             );
-            expect(ToolResultSchema.safeParse(result).success).toBe(true);
+            expect(PlainToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
             expect(result.content[0]?.text).toEqual(`Team ID: ${team.id}
     Display Name: ${team.display_name}

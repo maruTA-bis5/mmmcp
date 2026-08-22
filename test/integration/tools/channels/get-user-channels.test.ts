@@ -2,7 +2,7 @@ import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
 import { GetUserChannelsTool } from '../../../../src/tools/channels/get-user-channels.js';
-import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
+import { execute, PlainToolResultSchema, type ToolResult } from '../../../../src/tools/shared.js';
 import { getAdminAccessToken, getMattermostUrl, getUserAccessToken } from '../../testShared.js';
 
 describe('get_user_channels tool', () => {
@@ -52,7 +52,7 @@ describe('get_user_channels tool', () => {
                 getUserChannelsTool.definition.handler(userClient, { team_id: team.id }),
             );
 
-            expect(ToolResultSchema.safeParse(result).success).toBe(true);
+            expect(PlainToolResultSchema.safeParse(result).success).toBe(true);
             expect(result.content).lengthOf(1);
             const expectedContent = channels
                 .map(

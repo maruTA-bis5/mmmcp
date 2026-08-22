@@ -1,10 +1,10 @@
 import type { UserProfile } from '@mattermost/types/users';
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { type ToolResult, toolTextResult } from '../shared.js';
+import { type PlainToolResult, toolTextResult } from '../shared.js';
 import { type EmptyInput, Tool } from '../tool.js';
 
-export class WhoamiTool extends Tool<EmptyInput, ToolResult> {
+export class WhoamiTool extends Tool<EmptyInput, string, PlainToolResult> {
     constructor(client: MattermostClient) {
         super(client, {
             name: 'whoami',
@@ -15,7 +15,7 @@ export class WhoamiTool extends Tool<EmptyInput, ToolResult> {
     }
 }
 
-async function whoami(client: MattermostClient): Promise<ToolResult> {
+async function whoami(client: MattermostClient): Promise<PlainToolResult> {
     const profile: UserProfile = await client.api.getMe();
     return toolTextResult(`User ID: ${profile.id}
 Username: ${profile.username}
