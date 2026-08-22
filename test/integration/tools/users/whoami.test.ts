@@ -1,29 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { execute, PlainToolResultSchema, type ToolResult } from '../../../../src/tools/shared.js';
-import { WhoamiTool } from '../../../../src/tools/users/whoami.js';
-import { getMattermostUrl, getUserAccessToken } from '../../testShared.js';
+import { type WhoAmIOutput, WhoamiTool } from '../../../../src/tools/users/whoami.js';
+import { expectToolResultIsError, toolTest } from '../toolstestlib.js';
 
-describe('whoami tool', async () => {
-    it('should return the authenticated user profile', async () => {
-        const client = await MattermostClient.create({
-            url: getMattermostUrl(),
-            auth: { token: getUserAccessToken() },
-        });
-        const me = await client.api.getMe();
-        const whoamiTool = new WhoamiTool(client);
+describe(
+    'whoami tool',
+    toolTest(
+        c => new WhoamiTool(c),
+        context => {
+            it('should return the authenticated user profile', async () => {
+                const me = await context.mattermostClient.api.getMe();
+                const expected: WhoAmIOutput = {
+                    userId: me.id,
+                    username: me.username,
+                    nickname: me.nickname,
+                    firstName: me.first_name,
+                    lastName: me.last_name,
+                };
 
-        const profile: ToolResult = await execute(() => whoamiTool.definition.handler(client, {}));
+                const toolResult = await context.mcpClient.callTool({ name: 'whoami', arguments: {} });
 
-        expect(PlainToolResultSchema.safeParse(profile).success).toBe(true);
-        expect(profile.content).lengthOf(1);
-        const expectedContent = `
-User ID: ${me.id}
-Username: ${me.username}
-Nickname: ${me.nickname}
-First Name: ${me.first_name}
-Last Name: ${me.last_name}
-`;
-        expect(profile.content[0]?.text).toEqual(expectedContent.trim());
-    });
-});
+                expectToolResultIsError(toolResult).toBeFalsy();
+                expect(toolResult.structuredContent).toEqual(expected);
+            });
+        },
+    ),
+);
