@@ -1,17 +1,22 @@
+import { randomUUID } from 'node:crypto';
 import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { GetChannelInfoTool } from '../../../../src/tools/channels/get-channel-info.js';
-import { execute, PlainToolResultSchema, type ToolResult } from '../../../../src/tools/shared.js';
+import { type GetChannelInfoOutput, GetChannelInfoTool } from '../../../../src/tools/channels/get-channel-info.js';
 import { getAdminAccessToken, getMattermostUrl } from '../../testShared.js';
+import { expectToolResultIsError, toolTest } from '../toolstestlib.js';
 
-describe('get_channel_info tool', () => {
-    it('should return details for a Mattermost channel', async () => {
+describe(
+    'get_channel_info tool',
+    toolTest(
+        client => new GetChannelInfoTool(client),
+        context => {
+            it('should return details for a Mattermost channel', async () => {
         const client = await MattermostClient.create({
             url: getMattermostUrl(),
             auth: { token: getAdminAccessToken() },
         });
-        const suffix = Date.now().toString(36);
+        const suffix = randomUUID().replaceAll('-', '');
         const team = await client.api.createTeam({
             id: '',
             create_at: 0,
@@ -30,29 +35,34 @@ describe('get_channel_info tool', () => {
             group_constrained: false,
         } satisfies Team);
         try {
+            const user = await client.api.getUserByUsername('general');
+            await client.api.addToTeam(team.id, user.id);
             const channel = await client.api.createChannel({
                 team_id: team.id,
                 name: `integration-channel-${suffix}`,
                 display_name: `Integration Channel ${suffix}`,
                 type: 'O',
             });
-            const getChannelInfoTool = new GetChannelInfoTool(client);
+            const expected: GetChannelInfoOutput = {
+                channelId: channel.id,
+                teamId: channel.team_id,
+                displayName: channel.display_name,
+                name: channel.name,
+                type: channel.type,
+                purpose: channel.purpose,
+                header: channel.header,
+            };
+            const toolResult = await context.mcpClient.callTool({
+                name: 'get_channel_info',
+                arguments: { channel_id: channel.id },
+            });
 
-            const result: ToolResult = await execute(() =>
-                getChannelInfoTool.definition.handler(client, { channel_id: channel.id }),
-            );
-            expect(PlainToolResultSchema.safeParse(result).success).toBe(true);
-            expect(result.content).lengthOf(1);
-            const expectedContent = `Channel ID: ${channel.id}
-Team ID: ${channel.team_id}
-Display Name: ${channel.display_name}
-Name: ${channel.name}
-Type: ${channel.type}
-Purpose: ${channel.purpose}
-Header: ${channel.header}`;
-            expect(result.content[0]?.text).toEqual(expectedContent);
+            expectToolResultIsError(toolResult).toBeFalsy();
+            expect(toolResult.structuredContent).toEqual(expected);
         } finally {
             await client.api.deleteTeam(team.id);
         }
-    });
-});
+            });
+        },
+    ),
+);
