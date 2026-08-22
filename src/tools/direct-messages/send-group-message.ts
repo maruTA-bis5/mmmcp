@@ -4,11 +4,11 @@ import type { MattermostClient } from '../../mattermost/client.js';
 
 import { execute, idSchema, type ToolServer } from '../shared.js';
 
-const inputSchema = {
+const inputSchema = z.object({
     user_ids: z.array(idSchema).min(2).max(8).describe('Recipient user IDs; provide at least two recipients'),
     message: z.string().min(1).describe('Message in Mattermost Markdown'),
     root_id: idSchema.optional().describe('Optional root post ID for a reply'),
-};
+});
 
 export function registerSendGroupMessageTool(server: ToolServer, client: MattermostClient): void {
     server.registerTool(
@@ -17,7 +17,7 @@ export function registerSendGroupMessageTool(server: ToolServer, client: Matterm
             description: 'Send a group direct message. The authenticated user is included automatically.',
             inputSchema,
         },
-        async ({ user_ids, message, root_id }: z.infer<z.ZodObject<typeof inputSchema>>) =>
+        async ({ user_ids, message, root_id }: z.infer<typeof inputSchema>) =>
             execute(async () => {
                 const me = await client.api.getMe();
                 const channel = await client.api.createGroupChannel(uniqueUserIds([me.id, ...user_ids]));
