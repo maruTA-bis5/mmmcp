@@ -21,7 +21,7 @@ describe('registerTools', () => {
         const server = fakeServer();
         registerTools(server as never, {} as MattermostClient, true);
 
-        expect(server.tools).toHaveLength(12);
+        expect(server.tools).toHaveLength(13);
         expect(server.tools.map(({ name }) => name)).not.toContain('create_post');
     });
 
@@ -29,7 +29,7 @@ describe('registerTools', () => {
         const server = fakeServer();
         registerTools(server as never, {} as MattermostClient, false);
 
-        expect(server.tools).toHaveLength(17);
+        expect(server.tools).toHaveLength(18);
         expect(server.tools.map(({ name }) => name)).toContain('send_group_message');
     });
 });

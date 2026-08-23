@@ -29,6 +29,7 @@ export type MattermostApi = Pick<
     | 'createPost'
     | 'createDirectChannel'
     | 'createGroupChannel'
+    | 'getUrl'
 >;
 
 export interface MattermostClientOptions {

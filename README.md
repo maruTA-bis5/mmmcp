@@ -96,6 +96,7 @@ These tools are always available.
 | Tool | Description |
 | --- | --- |
 | `whoami` | Gets the authenticated user's profile. |
+| `get_server_info` | Gets Mattermost server information (URL and version). |
 | `get_user_teams` | Gets the authenticated user's team memberships. |
 | `get_user_channels` | Gets the available channels in a specified team. |
 | `get_channel_info` | Gets channel details. |
