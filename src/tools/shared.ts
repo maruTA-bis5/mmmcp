@@ -63,6 +63,9 @@ export function toolStructuredResult<T>(structuredContent: T): StructuredToolRes
 }
 
 function textResult(value: unknown): PlainToolResult {
+    if (value === undefined) {
+        return toolErrorResult(new Error('Tool returned undefined instead of a result'));
+    }
     const parsed = PlainToolResultSchema.safeParse(value);
     if (parsed.success) {
         return parsed.data;
