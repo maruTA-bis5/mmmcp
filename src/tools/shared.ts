@@ -2,24 +2,32 @@ import { z } from 'zod';
 
 import type { DownloadedFile } from '../mattermost/types.js';
 import { toolErrorResult } from '../utils/errors.js';
+import type { ToolOutput } from './tool.js';
 
-export type ToolResult = {
-    content: Array<{ type: 'text'; text: string }>;
-    isError?: boolean;
-};
-export const ToolResultSchema = z.object({
-    content: z.array(z.object({ type: z.literal('text'), text: z.string() })),
+export type ToolResult = PlainToolResult | StructuredToolResult<unknown>;
+export const PlainToolResultSchema = z.object({
+    content: z.array(z.object({ type: z.literal('text'), text: z.string() })).nonempty(),
     isError: z.boolean().exactOptional(),
 });
+export type PlainToolResult = z.infer<typeof PlainToolResultSchema>;
+export type StructuredToolResult<T> = PlainToolResult & {
+    structuredContent: T;
+};
+export const StructuredToolResultSchema = <T extends z.ZodTypeAny>(schema: T) =>
+    z.object({
+        ...PlainToolResultSchema.shape,
+        structuredContent: schema,
+    });
 
 export interface ToolServer {
-    registerTool<Input extends z.ZodRawShape>(
+    registerTool<Input, T>(
         name: string,
         definition: {
             description: string;
-            inputSchema: Input;
+            inputSchema: z.ZodType<Input>;
+            outputSchema?: z.ZodType<T> | undefined;
         },
-        handler: (input: z.infer<z.ZodObject<Input>>) => Promise<ToolResult>,
+        handler: (input: z.infer<z.ZodType<Input>>) => Promise<ToolResult>,
     ): unknown;
 }
 
@@ -30,19 +38,42 @@ export const paginationSchema = {
     per_page: z.number().int().min(1).max(200).optional().describe('Results per page'),
 };
 
-export async function execute(operation: () => Promise<unknown>): Promise<ToolResult> {
-    return Promise.resolve().then(operation).then(textResult).catch(toolErrorResult);
+export async function execute<T>(operation: () => Promise<ToolOutput<T>>): Promise<ToolResult> {
+    return Promise.resolve()
+        .then(operation)
+        .then(o => {
+            const structuredParseResult = StructuredToolResultSchema(z.any()).safeParse(o);
+            if (structuredParseResult.success) {
+                return structuredParseResult.data;
+            }
+            const parseResult = PlainToolResultSchema.safeParse(o);
+            if (parseResult.success) {
+                return parseResult.data;
+            }
+            return textResult(o);
+        })
+        .catch(toolErrorResult);
 }
 
-function textResult(value: unknown): ToolResult {
-    const parsed = ToolResultSchema.safeParse(value);
+export function toolStructuredResult<T>(structuredContent: T): StructuredToolResult<T> {
+    return {
+        content: [{ type: 'text', text: JSON.stringify(structuredContent, null, 2) }],
+        structuredContent,
+    };
+}
+
+function textResult(value: unknown): PlainToolResult {
+    if (value === undefined) {
+        return toolErrorResult(new Error('Tool returned undefined instead of a result'));
+    }
+    const parsed = PlainToolResultSchema.safeParse(value);
     if (parsed.success) {
         return parsed.data;
     }
     return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
 }
 
-export function toolTextResult(text: string): ToolResult {
+export function toolTextResult(text: string): PlainToolResult {
     return { content: [{ type: 'text', text }] };
 }
 
