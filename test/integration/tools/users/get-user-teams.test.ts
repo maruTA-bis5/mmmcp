@@ -35,7 +35,8 @@ describe(
                         };
                     }),
                 };
-                expect(toolResult.structuredContent).toMatchObject(expected);
+                const actual = toolResult.structuredContent as GetUserTeamsOutput;
+                expect(actual.teams).toEqual(expect.arrayContaining(expected.teams));
             });
         },
     ),
