@@ -1,7 +1,7 @@
 import type { Team } from '@mattermost/types/teams';
 import { describe, expect, it } from 'vitest';
 import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { CreateChannelTool } from '../../../../src/tools/channels/create-channel.js';
+import { type CreateChannelOutput, CreateChannelTool } from '../../../../src/tools/channels/create-channel.js';
 import { getAdminAccessToken, getMattermostUrl } from '../../testShared.js';
 import { expectToolResultIsError, toolTest } from '../toolstestlib.js';
 
@@ -50,11 +50,8 @@ describe(
 
                     expectToolResultIsError(toolResult).toBeFalsy();
                     const channel = await client.api.getChannelByName(team.id, input.name);
-                    expect(toolResult.content).toHaveLength(1);
-                    expect(toolResult.content[0]).toMatchObject({
-                        type: 'text',
-                        text: `Channel ID: ${channel.id}`,
-                    });
+                    const expected: CreateChannelOutput = { channelId: channel.id };
+                    expect(toolResult.structuredContent).toEqual(expected);
                 } finally {
                     await client.api.deleteTeam(team.id);
                 }

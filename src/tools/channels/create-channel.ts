@@ -3,10 +3,10 @@ import { z } from 'zod';
 
 import type { MattermostClient } from '../../mattermost/client.js';
 
-import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
+import { idSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
-const inputSchema = z.object({
+const inputSchema = z.strictObject({
     team_id: idSchema.describe('Team ID'),
     name: z
         .string()
@@ -21,12 +21,22 @@ const inputSchema = z.object({
 });
 type CreateChannelInput = z.infer<typeof inputSchema>;
 
-export class CreateChannelTool extends Tool<CreateChannelInput, never, ToolResult> {
+export const CreateChannelOutputSchema = z.strictObject({
+    channelId: idSchema.describe('The created channel ID'),
+});
+export type CreateChannelOutput = z.infer<typeof CreateChannelOutputSchema>;
+
+export class CreateChannelTool extends Tool<
+    CreateChannelInput,
+    CreateChannelOutput,
+    StructuredToolResult<CreateChannelOutput>
+> {
     constructor(client: MattermostClient) {
         super(client, {
             name: 'create_channel',
             description: 'Create a public or private Mattermost channel.',
             inputSchema,
+            outputSchema: CreateChannelOutputSchema,
             handler: createChannel,
         });
     }
@@ -35,16 +45,14 @@ export class CreateChannelTool extends Tool<CreateChannelInput, never, ToolResul
 async function createChannel(
     client: MattermostClient,
     { team_id, name, display_name, type, header, purpose }: CreateChannelInput,
-): Promise<ToolResult> {
-    return execute(async () => {
-        const channel: ServerChannel = await client.api.createChannel({
-            team_id,
-            name,
-            display_name,
-            type,
-            ...(header === undefined ? {} : { header }),
-            ...(purpose === undefined ? {} : { purpose }),
-        });
-        return toolTextResult(`Channel ID: ${channel.id}`);
+): Promise<StructuredToolResult<CreateChannelOutput>> {
+    const channel: ServerChannel = await client.api.createChannel({
+        team_id,
+        name,
+        display_name,
+        type,
+        ...(header === undefined ? {} : { header }),
+        ...(purpose === undefined ? {} : { purpose }),
     });
+    return toolStructuredResult({ channelId: channel.id });
 }
