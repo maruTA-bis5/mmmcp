@@ -6,7 +6,7 @@ import type { MattermostClient } from '../../mattermost/client.js';
 import { execute, idSchema, type ToolResult, toolTextResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
-const inputSchema = {
+const inputSchema = z.object({
     team_id: idSchema.describe('Team ID'),
     name: z
         .string()
@@ -18,7 +18,7 @@ const inputSchema = {
     type: z.enum(['O', 'P']).describe('O for public; P for private'),
     header: z.string().max(1024).optional().describe('Optional channel header'),
     purpose: z.string().max(250).optional().describe('Optional channel purpose'),
-};
+});
 
 export class CreateChannelTool extends Tool<typeof inputSchema, ToolResult> {
     constructor(client: MattermostClient) {

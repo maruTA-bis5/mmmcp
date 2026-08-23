@@ -4,11 +4,11 @@ import type { MattermostClient } from '../../mattermost/client.js';
 
 import { execute, idSchema, type ToolServer } from '../shared.js';
 
-const inputSchema = {
+const inputSchema = z.object({
     user_id: idSchema.describe('Recipient user ID'),
     message: z.string().min(1).describe('Message in Mattermost Markdown'),
     root_id: idSchema.optional().describe('Optional root post ID for a reply'),
-};
+});
 
 export function registerSendDmTool(server: ToolServer, client: MattermostClient): void {
     server.registerTool(
@@ -17,7 +17,7 @@ export function registerSendDmTool(server: ToolServer, client: MattermostClient)
             description: 'Send a direct message to one Mattermost user.',
             inputSchema,
         },
-        async ({ user_id, message, root_id }: z.infer<z.ZodObject<typeof inputSchema>>) =>
+        async ({ user_id, message, root_id }: z.infer<typeof inputSchema>) =>
             execute(async () => {
                 const me = await client.api.getMe();
                 const channel = await client.api.createDirectChannel([me.id, user_id]);
