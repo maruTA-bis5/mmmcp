@@ -5,7 +5,13 @@ import type { MattermostClient } from '../../mattermost/client.js';
 import { execute, idSchema, type ToolServer } from '../shared.js';
 
 const inputSchema = z.object({
-    user_ids: z.array(idSchema).min(2).max(7).describe('Recipient user IDs; provide at least two recipients. The authenticated user is included automatically. Do not duplicate IDs.'),
+    user_ids: z
+        .array(idSchema)
+        .min(2)
+        .max(7)
+        .describe(
+            'Recipient user IDs; provide at least two recipients. The authenticated user is included automatically. Do not duplicate IDs.',
+        ),
     message: z.string().min(1).describe('Message in Mattermost Markdown'),
     root_id: idSchema.optional().describe('Optional root post ID for a reply'),
 });
