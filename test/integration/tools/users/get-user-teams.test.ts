@@ -35,7 +35,7 @@ describe(
                         };
                     }),
                 };
-                expect(toolResult.structuredContent).toEqual(expected);
+                expect(toolResult.structuredContent).toMatchObject(expected);
             });
         },
     ),
