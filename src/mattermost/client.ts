@@ -10,6 +10,7 @@ export class MattermostClient {
     private readonly client: Client4;
     private readonly token: string;
     private readonly shouldLogout: boolean;
+    private readonly url: string;
 
     constructor(options: TokenMattermostClientOptions);
     constructor(url: string, token: string);
@@ -25,13 +26,15 @@ export class MattermostClient {
             throw new Error('Mattermost personal access token is required');
         }
 
+        const cleanUrl = url.replace(/\/+$/, '');
         const client = new Client4();
-        client.setUrl(url.replace(/\/+$/, ''));
+        client.setUrl(cleanUrl);
         client.setToken(token);
 
         this.client = client;
         this.api = client;
         this.token = token;
+        this.url = cleanUrl;
         this.shouldLogout = shouldLogout;
     }
 
@@ -60,6 +63,14 @@ export class MattermostClient {
         if (this.shouldLogout) {
             await this.client.logout();
         }
+    }
+
+    public getUrl(): string {
+        return this.url;
+    }
+
+    public getToken(): string {
+        return this.token;
     }
 
     async downloadFile(fileId: string): Promise<DownloadedFile> {
