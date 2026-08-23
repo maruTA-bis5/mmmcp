@@ -28,7 +28,7 @@ export class GetServerInfoTool extends Tool<
 
 async function getServerInfo(client: MattermostClient): Promise<StructuredToolResult<GetServerInfoOutput>> {
     // Get server URL and version from the client
-    const serverUrl = client.getUrl();
+    const serverUrl = client.api.getUrl();
     const version = client.getServerVersion();
 
     if (!version) {

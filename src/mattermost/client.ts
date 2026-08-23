@@ -65,14 +65,6 @@ export class MattermostClient {
         }
     }
 
-    public getUrl(): string {
-        return this.url;
-    }
-
-    public getToken(): string {
-        return this.token;
-    }
-
     public getServerVersion(): string {
         return this.client.serverVersion;
     }
