@@ -19,8 +19,9 @@ const inputSchema = z.object({
     header: z.string().max(1024).optional().describe('Optional channel header'),
     purpose: z.string().max(250).optional().describe('Optional channel purpose'),
 });
+type CreateChannelInput = z.infer<typeof inputSchema>;
 
-export class CreateChannelTool extends Tool<typeof inputSchema, ToolResult> {
+export class CreateChannelTool extends Tool<CreateChannelInput, never, ToolResult> {
     constructor(client: MattermostClient) {
         super(client, {
             name: 'create_channel',
@@ -33,7 +34,7 @@ export class CreateChannelTool extends Tool<typeof inputSchema, ToolResult> {
 
 async function createChannel(
     client: MattermostClient,
-    { team_id, name, display_name, type, header, purpose }: z.infer<z.ZodObject<typeof inputSchema>>,
+    { team_id, name, display_name, type, header, purpose }: CreateChannelInput,
 ): Promise<ToolResult> {
     return execute(async () => {
         const channel: ServerChannel = await client.api.createChannel({
@@ -44,12 +45,6 @@ async function createChannel(
             ...(header === undefined ? {} : { header }),
             ...(purpose === undefined ? {} : { purpose }),
         });
-        return toolTextResult(`Channel ID: ${channel.id}
-Team ID: ${channel.team_id}
-Display Name: ${channel.display_name}
-Name: ${channel.name}
-Type: ${channel.type}
-Header: ${channel.header}
-Purpose: ${channel.purpose}`);
+        return toolTextResult(`Channel ID: ${channel.id}`);
     });
 }
