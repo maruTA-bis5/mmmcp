@@ -1,6 +1,6 @@
 {
     "name": "@maruta-bis5/mmmcp",
-    "version": "0.0.20260803",
+    "version": "0.0.20260813",
     "description": "A Model Context Protocol local server for Mattermost.",
     "type": "module",
     "bin": {
@@ -52,6 +52,7 @@
     "devDependencies": {
         "@biomejs/biome": "^2.5.8",
         "@mattermost/types": "^11.9.0",
+        "@modelcontextprotocol/client": "^2.0.0",
         "@modelcontextprotocol/inspector": "^2.0.0",
         "@types/node": "^26.1.2",
         "globals": "^17.8.0",

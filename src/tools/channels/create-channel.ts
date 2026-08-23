@@ -4,7 +4,7 @@ import type { MattermostClient } from '../../mattermost/client.js';
 
 import { execute, idSchema, type ToolServer } from '../shared.js';
 
-const inputSchema = {
+const inputSchema = z.object({
     team_id: idSchema.describe('Team ID'),
     name: z
         .string()
@@ -16,7 +16,7 @@ const inputSchema = {
     type: z.enum(['O', 'P']).describe('O for public; P for private'),
     header: z.string().max(1024).optional().describe('Optional channel header'),
     purpose: z.string().max(250).optional().describe('Optional channel purpose'),
-};
+});
 
 export function registerCreateChannelTool(server: ToolServer, client: MattermostClient): void {
     server.registerTool(
@@ -25,7 +25,7 @@ export function registerCreateChannelTool(server: ToolServer, client: Mattermost
             description: 'Create a public or private Mattermost channel.',
             inputSchema,
         },
-        async ({ team_id, name, display_name, type, header, purpose }: z.infer<z.ZodObject<typeof inputSchema>>) =>
+        async ({ team_id, name, display_name, type, header, purpose }: z.infer<typeof inputSchema>) =>
             execute(() =>
                 client.api.createChannel({
                     team_id,
