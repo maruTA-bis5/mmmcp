@@ -1,25 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { MattermostClient } from '../../../../src/mattermost/client.js';
-import { execute, type ToolResult, ToolResultSchema } from '../../../../src/tools/shared.js';
-import { GetUserTeamsTool } from '../../../../src/tools/users/get-user-teams.js';
-import { getMattermostUrl, getUserAccessToken } from '../../testShared.js';
+import { type GetUserTeamsOutput, GetUserTeamsTool } from '../../../../src/tools/users/get-user-teams.js';
+import { expectToolResultIsError, toolTest } from '../toolstestlib.js';
 
-describe('get_user_teams tool', () => {
-    it('should return team memberships for the authenticated user', async () => {
-        const client = await MattermostClient.create({
-            url: getMattermostUrl(),
-            auth: { token: getUserAccessToken() },
-        });
-        const memberships = await client.api.getMyTeamMembers();
-        const getUserTeamsTool = new GetUserTeamsTool(client);
+describe(
+    'get_user_teams tool',
+    toolTest(
+        client => new GetUserTeamsTool(client),
+        context => {
+            it('should return team memberships for the authenticated user', async () => {
+                const memberships = await context.mattermostClient.api.getMyTeamMembers();
+                const teamsById = new Map(
+                    await Promise.all(
+                        memberships.map(async membership => {
+                            const team = await context.mattermostClient.api.getTeam(membership.team_id);
+                            return [membership.team_id, team] as const;
+                        }),
+                    ),
+                );
 
-        const result: ToolResult = await execute(() => getUserTeamsTool.definition.handler(client, {}));
+                const toolResult = await context.mcpClient.callTool({
+                    name: 'get_user_teams',
+                    arguments: {},
+                });
 
-        expect(ToolResultSchema.safeParse(result).success).toBe(true);
-        expect(result.content).lengthOf(1);
-        const expectedContent = memberships
-            .map(membership => `Team ID: ${membership.team_id}\nRoles: ${membership.roles}`)
-            .join('\n\n');
-        expect(result.content[0]?.text).toEqual(expectedContent);
-    });
-});
+                expectToolResultIsError(toolResult).toBeFalsy();
+                const expected: GetUserTeamsOutput = {
+                    teams: memberships.map(membership => {
+                        const team = teamsById.get(membership.team_id);
+                        return {
+                            teamId: membership.team_id,
+                            roles: membership.roles,
+                            name: team?.name ?? '',
+                            displayName: team?.display_name ?? '',
+                        };
+                    }),
+                };
+                expect(toolResult.structuredContent).toEqual(expected);
+            });
+        },
+    ),
+);
