@@ -35,11 +35,12 @@ describe('get_server_info with username/password auth', () => {
             url: getMattermostUrl(),
             auth: { username: 'admin', password: 'admin-password' },
         });
-
-        const version = client.getServerVersion();
-        expect(typeof version).toBe('string');
-        expect(version.length).toBeGreaterThan(0);
-
-        await client.logout();
+        try {
+            const version = client.getServerVersion();
+            expect(typeof version).toBe('string');
+            expect(version.length).toBeGreaterThan(0);
+        } finally {
+            await client.logout();
+        }
     });
 });
