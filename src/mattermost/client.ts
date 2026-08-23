@@ -11,11 +11,23 @@ export class MattermostClient {
     private readonly token: string;
     private readonly shouldLogout: boolean;
     private readonly url: string;
+    private serverVersion: string;
 
     constructor(options: TokenMattermostClientOptions);
     constructor(url: string, token: string);
     constructor(options: TokenMattermostClientOptions, suppliedToken: undefined, shouldLogout: boolean);
-    constructor(optionsOrUrl: TokenMattermostClientOptions | string, suppliedToken?: string, shouldLogout = false) {
+    constructor(
+        options: TokenMattermostClientOptions,
+        suppliedToken: undefined,
+        shouldLogout: boolean,
+        serverVersion: string,
+    );
+    constructor(
+        optionsOrUrl: TokenMattermostClientOptions | string,
+        suppliedToken?: string,
+        shouldLogout = false,
+        serverVersion?: string,
+    ) {
         const { url, token } =
             typeof optionsOrUrl === 'string' ? { url: optionsOrUrl, token: suppliedToken ?? '' } : optionsOrUrl;
 
@@ -36,6 +48,7 @@ export class MattermostClient {
         this.token = token;
         this.url = cleanUrl;
         this.shouldLogout = shouldLogout;
+        this.serverVersion = serverVersion ?? client.serverVersion;
     }
 
     public static async create(options: MattermostClientOptions): Promise<MattermostClient> {
@@ -53,10 +66,26 @@ export class MattermostClient {
         }
 
         const client = new Client4();
-        client.setUrl(options.url.replace(/\/+$/, ''));
-        await client.login(options.auth.username, options.auth.password);
+        const cleanUrl = options.url.replace(/\/+$/, '');
+        client.setUrl(cleanUrl);
+        try {
+            await client.login(options.auth.username, options.auth.password);
+        } catch (error: unknown) {
+            if (error instanceof ClientError) {
+                if (error.status_code === 401 || error.status_code === 403) {
+                    // Preserve ServerError details for authentication failures
+                    throw error;
+                }
+                // Other ClientErrors (e.g., network errors) should be wrapped
+                throw new Error(`Could not connect to Mattermost (${cleanUrl}). Reason: ${error.message}`);
+            }
+            if (error instanceof Error) {
+                throw new Error(`Could not connect to Mattermost (${cleanUrl}). Reason: ${error.message}`);
+            }
+            throw error;
+        }
 
-        return new MattermostClient({ url: options.url, token: client.token }, undefined, true);
+        return new MattermostClient({ url: options.url, token: client.token }, undefined, true, client.serverVersion);
     }
 
     public async logout(): Promise<void> {
@@ -66,7 +95,7 @@ export class MattermostClient {
     }
 
     public getServerVersion(): string {
-        return this.client.serverVersion;
+        return this.serverVersion || this.client.serverVersion;
     }
 
     async downloadFile(fileId: string): Promise<DownloadedFile> {

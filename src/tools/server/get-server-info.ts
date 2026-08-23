@@ -5,8 +5,8 @@ import { type StructuredToolResult, toolStructuredResult } from '../shared.js';
 import { type EmptyInput, Tool } from '../tool.js';
 
 export const GetServerInfoOutputSchema = z.strictObject({
-    serverUrl: z.string().describe('The Mattermost server URL'),
-    version: z.string().describe('The Mattermost server version'),
+    mattermost_url: z.string().describe('The Mattermost server URL'),
+    server_version: z.string().describe('The Mattermost server version'),
 });
 export type GetServerInfoOutput = z.infer<typeof GetServerInfoOutputSchema>;
 
@@ -32,12 +32,12 @@ async function getServerInfo(client: MattermostClient): Promise<StructuredToolRe
     const version = client.getServerVersion();
 
     if (!version) {
-        throw new Error('Server version is not available');
+        throw new Error(`Could not connect to Mattermost (${serverUrl}). Reason: Server version is not available`);
     }
 
     const output: GetServerInfoOutput = {
-        serverUrl,
-        version,
+        mattermost_url: serverUrl,
+        server_version: version,
     };
 
     return toolStructuredResult(output);
