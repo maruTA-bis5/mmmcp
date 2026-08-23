@@ -27,25 +27,12 @@ export class GetServerInfoTool extends Tool<
 }
 
 async function getServerInfo(client: MattermostClient): Promise<StructuredToolResult<GetServerInfoOutput>> {
-    // Get server URL from the client
+    // Get server URL and version from the client
     const serverUrl = client.getUrl();
+    const version = client.getServerVersion();
 
-    // Call ping endpoint to get version from response header
-    // Extract version from X-Mattermost-Version header
-    const response = await fetch(`${serverUrl}/api/v4/system/ping`, {
-        headers: {
-            Authorization: `Bearer ${client.getToken()}`,
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error(`Failed to get server info: ${response.status} ${response.statusText}`);
-    }
-
-    // Extract version from X-Mattermost-Version header
-    const version = response.headers.get('X-Mattermost-Version');
     if (!version) {
-        throw new Error('Server did not provide version in X-Mattermost-Version header');
+        throw new Error('Server version is not available');
     }
 
     const output: GetServerInfoOutput = {

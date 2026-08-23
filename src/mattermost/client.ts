@@ -73,6 +73,10 @@ export class MattermostClient {
         return this.token;
     }
 
+    public getServerVersion(): string {
+        return this.client.serverVersion;
+    }
+
     async downloadFile(fileId: string): Promise<DownloadedFile> {
         const response = await fetch(this.api.getFileRoute(fileId), {
             headers: { Authorization: `Bearer ${this.token}` },
