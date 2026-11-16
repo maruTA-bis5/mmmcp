@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { type FileHandle, mkdtemp, open, realpath, stat, unlink } from 'node:fs/promises';
+import { type FileHandle, mkdtemp, open, realpath, rmdir, stat, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
@@ -16,7 +16,7 @@ const inputSchema = z.strictObject({
         .min(1)
         .optional()
         .describe(
-            'Absolute path to an existing directory on the mmmcp host where the downloaded file will be saved (for example, `C:\\Users\\alice\\Downloads` on Windows or `/home/alice/Downloads` on Linux/macOS). Omit to create a unique directory under the OS temporary directory; it is not automatically deleted.',
+            'Absolute path to an existing directory on the mmmcp host where the downloaded file will be saved (for example, `C:\\Users\\alice\\Downloads` on Windows or `/home/alice/Downloads` on Linux/macOS). Omit to create a unique directory under the OS temporary directory; successful downloads are not automatically deleted.',
         ),
     filename: z
         .string()
@@ -69,12 +69,22 @@ async function downloadFile(
         ? await mkdtemp(path.join(tmpdir(), 'mmmcp-'))
         : await resolveExistingDirectory(directory);
 
-    const response = await client.downloadFile(file_id);
+    let response: Response | undefined;
     let destination: { path: string; size: number };
     try {
+        response = await client.downloadFile(file_id);
         destination = await writeWithoutOverwrite(destinationDirectory, selectedName, response.body);
     } catch (error: unknown) {
-        await response.body?.cancel().catch(() => undefined);
+        await response?.body?.cancel().catch(() => undefined);
+        if (temporary) {
+            try {
+                await rmdir(destinationDirectory);
+            } catch (cleanupError: unknown) {
+                throw new Error(
+                    `File download failed (${errorMessage(error)}); could not remove temporary directory ${destinationDirectory} (${errorMessage(cleanupError)})`,
+                );
+            }
+        }
         throw error;
     }
     const contentType = response.headers.get('content-type') ?? info.mime_type ?? undefined;
@@ -131,7 +141,7 @@ function safeMattermostFileName(originalName: string | undefined, fileId: string
         return fileId;
     }
 
-    return fitFileName(safeName, '') ?? fileId;
+    return fitFileName(safeName, '');
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -152,9 +162,6 @@ async function writeWithoutOverwrite(
     for (let suffix = 0; ; suffix += 1) {
         const collisionSuffix = suffix === 0 ? '' : ` (${suffix})`;
         const candidateName = fitFileName(`${stem}${extension}`, collisionSuffix);
-        if (candidateName === undefined) {
-            throw new Error('The filename extension and collision suffix exceed the 255-byte file name limit');
-        }
         const candidatePath = path.join(directory, candidateName);
         let fileHandle: FileHandle;
         try {
@@ -189,15 +196,17 @@ async function writeWithoutOverwrite(
     }
 }
 
-function fitFileName(filename: string, suffix: string): string | undefined {
+function fitFileName(filename: string, suffix: string): string {
     const extension = path.extname(filename);
     const stem = extension ? filename.slice(0, -extension.length) : filename;
+    const minimumStemBytes = Buffer.byteLength([...stem][0] ?? '', 'utf8');
+    const fittedExtension = truncateUtf8(
+        extension,
+        MAX_FILE_NAME_BYTES - Buffer.byteLength(suffix, 'utf8') - minimumStemBytes,
+    );
     const availableStemBytes =
-        MAX_FILE_NAME_BYTES - Buffer.byteLength(extension, 'utf8') - Buffer.byteLength(suffix, 'utf8');
-    if (availableStemBytes < 0) {
-        return undefined;
-    }
-    return `${truncateUtf8(stem, availableStemBytes)}${suffix}${extension}`;
+        MAX_FILE_NAME_BYTES - Buffer.byteLength(fittedExtension, 'utf8') - Buffer.byteLength(suffix, 'utf8');
+    return `${truncateUtf8(stem, availableStemBytes)}${suffix}${fittedExtension}`;
 }
 
 function truncateUtf8(value: string, maximumBytes: number): string {

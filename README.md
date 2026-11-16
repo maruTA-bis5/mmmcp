@@ -110,6 +110,12 @@ These tools are always available.
 | `read_file_info` | Gets attachment metadata without downloading its contents. |
 | `download_file` | Downloads one attachment to an existing directory or a unique temporary directory. |
 
+`download_file` never overwrites existing files. It adds a numeric suffix and shortens
+the name, including the extension if necessary, to fit the 255-byte UTF-8 filename limit.
+Successful temporary downloads are retained. Failed downloads remove their partial file
+and tool-created empty temporary directory; cleanup failures report the remaining path.
+Caller-supplied directories are never removed.
+
 ### Write tools
 
 The following tools are exposed only in writable mode, which is the default.

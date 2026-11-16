@@ -9,6 +9,11 @@ import { ReadFileInfoTool } from '../src/tools/files/read-file-info.js';
 import type { ToolResult, ToolServer } from '../src/tools/shared.js';
 import { registerTool } from '../src/tools/tool.js';
 
+vi.mock('node:os', async importOriginal => {
+    const actual = await importOriginal<typeof import('node:os')>();
+    return { ...actual, tmpdir: vi.fn(actual.tmpdir) };
+});
+
 type DownloadInput = { file_id: string; directory?: string; filename?: string };
 const testFileId = 'aaaaaaaaaaaaaaaaaaaaaaaaaa';
 type DownloadResult = {
@@ -22,6 +27,7 @@ type DownloadResult = {
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+    vi.mocked(tmpdir).mockReset();
     await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, { recursive: true, force: true })));
 });
 
@@ -134,6 +140,75 @@ describe('file tools', () => {
         expect(Buffer.byteLength(duplicate.file_name, 'utf8')).toBeLessThanOrEqual(255);
         expect(duplicate.file_name.endsWith(' (1).pdf')).toBe(true);
         expect(await readFile(first.path, 'utf8')).toBe('pre-existing');
+    });
+
+    it.each(['b', '\u5831'])('shortens long extensions to fit duplicate suffixes (%s)', async character => {
+        const directory = await makeTemporaryDirectory();
+        const filename = `a.${character.repeat(Math.floor(253 / Buffer.byteLength(character, 'utf8')))}`;
+        await writeFile(path.join(directory, filename), 'original');
+        const { downloadHandler } = createHandlers({
+            response: new Response('download'),
+        });
+
+        const result = await downloadHandler({ file_id: testFileId, directory, filename });
+        const output = getStructuredContent<DownloadResult>(result);
+
+        expect(output.file_name).toContain('a (1).');
+        expect(Buffer.byteLength(output.file_name, 'utf8')).toBeLessThanOrEqual(255);
+        expect(output.file_name).not.toContain('\ufffd');
+        expect(await readFile(output.path, 'utf8')).toBe('download');
+        expect(await readFile(path.join(directory, filename), 'utf8')).toBe('original');
+    });
+
+    it.each(['request', 'stream'])('removes its temporary directory after a %s failure', async failure => {
+        const parent = await makeTemporaryDirectory();
+        vi.mocked(tmpdir).mockReturnValue(parent);
+        const { downloadHandler } = createHandlers({
+            fileName: 'report.pdf',
+            response: () => {
+                if (failure === 'request') {
+                    throw new Error('request failed');
+                }
+                return new Response(
+                    new ReadableStream<Uint8Array>({
+                        start(controller) {
+                            controller.error(new Error('stream failed'));
+                        },
+                    }),
+                );
+            },
+        });
+
+        const result = await downloadHandler({ file_id: testFileId });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]?.text).toContain(`${failure} failed`);
+        expect(await readdir(parent)).toEqual([]);
+    });
+
+    it('reports the retained temporary path if directory cleanup fails without removing other files', async () => {
+        const parent = await makeTemporaryDirectory();
+        vi.mocked(tmpdir).mockReturnValue(parent);
+        let retainedPath = '';
+        const { downloadHandler } = createHandlers({
+            fileName: 'report.pdf',
+            response: async () => {
+                const [name] = await readdir(parent);
+                if (!name) {
+                    throw new Error('Expected the tool-created directory');
+                }
+                retainedPath = path.join(parent, name);
+                await writeFile(path.join(retainedPath, 'keep.txt'), 'keep');
+                throw new Error('request failed');
+            },
+        });
+
+        const result = await downloadHandler({ file_id: testFileId });
+
+        expect(result.isError).toBe(true);
+        expect(result.content[0]?.text).toContain('request failed');
+        expect(result.content[0]?.text).toContain(`could not remove temporary directory ${retainedPath}`);
+        expect(await readFile(path.join(retainedPath, 'keep.txt'), 'utf8')).toBe('keep');
     });
 
     it('uses the Mattermost filename, creates a temporary destination, and avoids concurrent overwrites', async () => {
