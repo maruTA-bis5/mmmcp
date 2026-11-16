@@ -101,7 +101,8 @@ interface Config {
 | `read_thread` | `GET /api/v4/posts/{post_id}/thread` | Get thread messages |
 | `search_users` | `GET /api/v4/users/search` | Search users |
 | `search_posts` | `GET /api/v4/posts/search` | Search posts |
-| `read_file` | `GET /api/v4/files/{file_id}` | Download attachment |
+| `read_file_info` | `GET /api/v4/files/{file_id}/info` | Get attachment metadata |
+| `download_file` | `GET /api/v4/files/{file_id}` | Stream attachment to the local file system |
 
 ### Writable Tools (Writable Mode Only)
 

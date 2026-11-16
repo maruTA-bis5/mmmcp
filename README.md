@@ -107,7 +107,8 @@ These tools are always available.
 | `read_thread` | Gets the thread containing a post. |
 | `search_users` | Searches users by name, username, nickname, or email address. |
 | `search_posts` | Searches posts in a specified team. |
-| `read_file` | Reads UTF-8 text attachments up to 1 MiB. Binary or oversized attachments return metadata only. |
+| `read_file_info` | Gets attachment metadata without downloading its contents. |
+| `download_file` | Downloads one attachment to an existing directory or a unique temporary directory. |
 
 ### Write tools
 

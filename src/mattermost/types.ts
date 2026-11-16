@@ -43,11 +43,3 @@ export interface TokenMattermostClientOptions {
     url: string;
     token: string;
 }
-
-export interface DownloadedFile {
-    bytes: Uint8Array;
-    contentLength?: number;
-    contentType?: string;
-    fileName?: string;
-    truncated?: boolean;
-}
