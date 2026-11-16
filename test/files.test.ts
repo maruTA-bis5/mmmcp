@@ -10,6 +10,7 @@ import type { ToolResult, ToolServer } from '../src/tools/shared.js';
 import { registerTool } from '../src/tools/tool.js';
 
 type DownloadInput = { file_id: string; directory?: string; filename?: string };
+const testFileId = 'aaaaaaaaaaaaaaaaaaaaaaaaaa';
 type DownloadResult = {
     path: string;
     file_name: string;
@@ -25,15 +26,29 @@ afterEach(async () => {
 });
 
 describe('file tools', () => {
+    it('rejects malformed file IDs before invoking Mattermost', async () => {
+        const { downloadInputSchema, getFileInfo, downloadFile } = createHandlers({
+            response: new Response('body'),
+            fileName: 'file.txt',
+        });
+
+        expect(downloadInputSchema.safeParse({ file_id: '../users/me?x=/../../escape' }).success).toBe(false);
+        expect(getFileInfo).not.toHaveBeenCalled();
+        expect(downloadFile).not.toHaveBeenCalled();
+    });
+
     it('gets file metadata from the authenticated Mattermost info endpoint', async () => {
         const fetchMock = vi.fn(async () => new Response(JSON.stringify({ name: 'report.pdf' })));
         vi.stubGlobal('fetch', fetchMock);
         try {
             const client = new MattermostClient({ url: 'https://mattermost.example', token: 'test-token' });
-            await expect(client.getFileInfo('file123')).resolves.toMatchObject({ name: 'report.pdf' });
-            expect(fetchMock).toHaveBeenCalledWith('https://mattermost.example/api/v4/files/file123/info', {
-                headers: { Authorization: 'Bearer test-token' },
+            await expect(client.getFileInfo('aaaaaaaaaaaaaaaaaaaaaaaaaa')).resolves.toMatchObject({
+                name: 'report.pdf',
             });
+            expect(fetchMock).toHaveBeenCalledWith(
+                'https://mattermost.example/api/v4/files/aaaaaaaaaaaaaaaaaaaaaaaaaa/info',
+                { headers: { Authorization: 'Bearer test-token' } },
+            );
         } finally {
             vi.unstubAllGlobals();
         }
@@ -49,7 +64,7 @@ describe('file tools', () => {
             }),
         });
 
-        const result = await downloadHandler({ file_id: 'file123', directory, filename: 'report.pdf' });
+        const result = await downloadHandler({ file_id: testFileId, directory, filename: 'report.pdf' });
         const output = getStructuredContent<DownloadResult>(result);
 
         expect(output).toMatchObject({
@@ -71,11 +86,54 @@ describe('file tools', () => {
             response: new Response(contents),
         });
 
-        const result = await downloadHandler({ file_id: 'file123', directory });
+        const result = await downloadHandler({ file_id: testFileId, directory });
         const output = getStructuredContent<DownloadResult>(result);
 
         expect(output.size_bytes).toBe(contents.byteLength);
         expect(await readFile(output.path)).toHaveLength(contents.byteLength);
+    });
+
+    it('keeps concurrent downloads to the same directory collision-safe', async () => {
+        const directory = await makeTemporaryDirectory();
+        await writeFile(path.join(directory, 'report.pdf'), 'pre-existing');
+        let responseNumber = 0;
+        const { downloadHandler } = createHandlers({
+            fileName: 'report.pdf',
+            response: () => new Response(`download-${++responseNumber}`),
+        });
+
+        const results = await Promise.all([
+            downloadHandler({ file_id: testFileId, directory }),
+            downloadHandler({ file_id: testFileId, directory }),
+        ]);
+        const outputs = results.map(result => getStructuredContent<DownloadResult>(result));
+        const filenames = outputs.map(output => output.file_name).sort();
+
+        expect(filenames).toEqual(['report (1).pdf', 'report (2).pdf']);
+        expect(await readFile(path.join(directory, 'report.pdf'), 'utf8')).toBe('pre-existing');
+        expect(new Set(await Promise.all(outputs.map(output => readFile(output.path, 'utf8'))))).toEqual(
+            new Set(['download-1', 'download-2']),
+        );
+    });
+
+    it('truncates oversized metadata names on UTF-8 boundaries and reserves collision suffix bytes', async () => {
+        const directory = await makeTemporaryDirectory();
+        const originalName = `${'報'.repeat(90)}.pdf`;
+        const { downloadHandler } = createHandlers({
+            fileName: originalName,
+            response: () => new Response('download'),
+        });
+
+        const first = getStructuredContent<DownloadResult>(await downloadHandler({ file_id: testFileId, directory }));
+        await writeFile(first.path, 'pre-existing');
+        const duplicate = getStructuredContent<DownloadResult>(
+            await downloadHandler({ file_id: testFileId, directory }),
+        );
+
+        expect(Buffer.byteLength(first.file_name, 'utf8')).toBeLessThanOrEqual(255);
+        expect(Buffer.byteLength(duplicate.file_name, 'utf8')).toBeLessThanOrEqual(255);
+        expect(duplicate.file_name.endsWith(' (1).pdf')).toBe(true);
+        expect(await readFile(first.path, 'utf8')).toBe('pre-existing');
     });
 
     it('uses the Mattermost filename, creates a temporary destination, and avoids concurrent overwrites', async () => {
@@ -85,8 +143,8 @@ describe('file tools', () => {
         });
 
         const [first, second] = await Promise.all([
-            downloadHandler({ file_id: 'file123' }),
-            downloadHandler({ file_id: 'file123' }),
+            downloadHandler({ file_id: testFileId }),
+            downloadHandler({ file_id: testFileId }),
         ]);
         const firstResult = getStructuredContent<DownloadResult>(first);
         const secondResult = getStructuredContent<DownloadResult>(second);
@@ -111,9 +169,9 @@ describe('file tools', () => {
             fileName: undefined,
         });
 
-        const result = await downloadHandler({ file_id: 'file123', directory });
+        const result = await downloadHandler({ file_id: testFileId, directory });
 
-        expect(getStructuredContent<DownloadResult>(result).file_name).toBe('file123');
+        expect(getStructuredContent<DownloadResult>(result).file_name).toBe(testFileId);
     });
 
     it('removes a partial file after a stream failure', async () => {
@@ -129,25 +187,53 @@ describe('file tools', () => {
             fileName: 'report.pdf',
         });
 
-        const result = await downloadHandler({ file_id: 'file123', directory });
+        const result = await downloadHandler({ file_id: testFileId, directory });
 
         expect(result.isError).toBe(true);
         expect(getFileInfo).toHaveBeenCalledOnce();
         expect(await readdir(directory)).toEqual([]);
     });
 
+    it('cancels the download body if creating the destination file fails', async () => {
+        const directory = await makeTemporaryDirectory();
+        const cancel = vi.fn(async () => {
+            throw new Error('cancel failed');
+        });
+        const body = new ReadableStream<Uint8Array>({ cancel });
+        const { downloadHandler } = createHandlers({
+            fileName: 'report.pdf',
+            response: async () => {
+                await rm(directory, { recursive: true, force: true });
+                return new Response(body);
+            },
+        });
+
+        const result = await downloadHandler({ file_id: testFileId, directory });
+
+        expect(result.isError).toBe(true);
+        expect(cancel).toHaveBeenCalledOnce();
+        expect(result.content[0]?.text).toContain('ENOENT');
+        expect(result.content[0]?.text).not.toContain('cancel failed');
+    });
+
     it('rejects invalid names and does not download when metadata retrieval fails', async () => {
         const directory = await makeTemporaryDirectory();
         const first = createHandlers({ response: new Response('body'), fileName: 'file.txt' });
-        const invalidResult = await first.downloadHandler({ file_id: 'file123', directory, filename: '../escape' });
+        const invalidResult = await first.downloadHandler({ file_id: testFileId, directory, filename: '../escape' });
+        const oversizedNameResult = await first.downloadHandler({
+            file_id: testFileId,
+            directory,
+            filename: 'a'.repeat(256),
+        });
         expect(invalidResult.isError).toBe(true);
+        expect(oversizedNameResult.isError).toBe(true);
         expect(first.downloadFile).not.toHaveBeenCalled();
 
         const second = createHandlers({
             response: new Response('body'),
             getFileInfoError: new Error('metadata unavailable'),
         });
-        const metadataResult = await second.downloadHandler({ file_id: 'file123', directory });
+        const metadataResult = await second.downloadHandler({ file_id: testFileId, directory });
         expect(metadataResult.isError).toBe(true);
         expect(second.downloadFile).not.toHaveBeenCalled();
         expect(await readdir(directory)).toEqual([]);
@@ -158,7 +244,7 @@ describe('file tools', () => {
             fileName: 'report.pdf',
             response: new Response('unused'),
         });
-        const result = await infoHandler({ file_id: 'file123' });
+        const result = await infoHandler({ file_id: testFileId });
 
         expect(getStructuredContent<Record<string, unknown>>(result)).toMatchObject({ name: 'report.pdf' });
         expect(downloadFile).not.toHaveBeenCalled();
@@ -173,11 +259,12 @@ async function makeTemporaryDirectory(): Promise<string> {
 
 function createHandlers(options: {
     fileName?: string;
-    response: Response | (() => Response);
+    response: Response | (() => Response | Promise<Response>);
     getFileInfoError?: Error;
 }): {
     downloadHandler: (input: DownloadInput) => Promise<ToolResult>;
     infoHandler: (input: DownloadInput) => Promise<ToolResult>;
+    downloadInputSchema: DownloadFileTool['definition']['inputSchema'];
     getFileInfo: ReturnType<typeof vi.fn>;
     downloadFile: ReturnType<typeof vi.fn>;
 } {
@@ -186,7 +273,7 @@ function createHandlers(options: {
             throw options.getFileInfoError;
         }
         return {
-            id: 'file123',
+            id: testFileId,
             user_id: 'user123',
             channel_id: 'channel123',
             create_at: 0,
@@ -204,7 +291,7 @@ function createHandlers(options: {
         };
     });
     const downloadFile = vi.fn(async () =>
-        typeof options.response === 'function' ? options.response() : options.response,
+        typeof options.response === 'function' ? await options.response() : options.response,
     );
     const client = { getFileInfo, downloadFile } as unknown as MattermostClient;
     const handlers = new Map<string, (input: DownloadInput) => Promise<ToolResult>>();
@@ -214,7 +301,8 @@ function createHandlers(options: {
         },
     } as unknown as ToolServer;
 
-    registerTool(server, new DownloadFileTool(client));
+    const downloadTool = new DownloadFileTool(client);
+    registerTool(server, downloadTool);
     registerTool(server, new ReadFileInfoTool(client));
 
     const downloadHandler = handlers.get('download_file');
@@ -226,6 +314,7 @@ function createHandlers(options: {
     return {
         downloadHandler,
         infoHandler,
+        downloadInputSchema: downloadTool.definition.inputSchema,
         getFileInfo,
         downloadFile,
     };

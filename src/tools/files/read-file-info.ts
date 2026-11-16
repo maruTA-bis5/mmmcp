@@ -1,11 +1,13 @@
 import type { FileInfo } from '@mattermost/types/files';
 import { z } from 'zod';
 import type { MattermostClient } from '../../mattermost/client.js';
-import { idSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
+import { idSchema, mattermostFileIdSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = z.strictObject({
-    file_id: idSchema.describe('Mattermost file ID from a post attachment; provide the ID, not the file name.'),
+    file_id: mattermostFileIdSchema.describe(
+        '26-character lowercase Mattermost file ID from a post attachment; provide the ID, not the file name.',
+    ),
 });
 type ReadFileInfoInput = z.infer<typeof inputSchema>;
 

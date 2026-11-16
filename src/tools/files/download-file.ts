@@ -1,14 +1,15 @@
+import { Buffer } from 'node:buffer';
 import { type FileHandle, mkdtemp, open, realpath, stat, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 import type { MattermostClient } from '../../mattermost/client.js';
-import { idSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
+import { mattermostFileIdSchema, type StructuredToolResult, toolStructuredResult } from '../shared.js';
 import { Tool } from '../tool.js';
 
 const inputSchema = z.strictObject({
-    file_id: idSchema.describe(
-        'Mattermost file ID from a post attachment or file metadata result; provide the ID, not the file name.',
+    file_id: mattermostFileIdSchema.describe(
+        '26-character lowercase Mattermost file ID from a post attachment or file metadata result; provide the ID, not the file name.',
     ),
     directory: z
         .string()
@@ -22,7 +23,7 @@ const inputSchema = z.strictObject({
         .min(1)
         .optional()
         .describe(
-            "Optional single file name, such as `report.pdf`; do not include a path. Omit to use Mattermost's original file name (sanitized if needed), or the file ID if no name is available. Existing files are never overwritten; a numeric suffix is added to duplicates.",
+            "Optional single file name, such as `report.pdf`; do not include a path, and keep the UTF-8 encoded name within 255 bytes. Omit to use Mattermost's original file name (sanitized and shortened if needed), or the file ID if no name is available. Existing files are never overwritten; a numeric suffix is added to duplicates.",
         ),
 });
 type DownloadFileInput = z.infer<typeof inputSchema>;
@@ -38,6 +39,7 @@ export type DownloadFileOutput = z.infer<typeof DownloadFileOutputSchema>;
 
 const invalidFileNameCharacters = /[<>:"/\\|?*]/;
 const reservedFileName = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+const MAX_FILE_NAME_BYTES = 255;
 
 export class DownloadFileTool extends Tool<
     DownloadFileInput,
@@ -68,7 +70,13 @@ async function downloadFile(
         : await resolveExistingDirectory(directory);
 
     const response = await client.downloadFile(file_id);
-    const destination = await writeWithoutOverwrite(destinationDirectory, selectedName, response.body);
+    let destination: { path: string; size: number };
+    try {
+        destination = await writeWithoutOverwrite(destinationDirectory, selectedName, response.body);
+    } catch (error: unknown) {
+        await response.body?.cancel().catch(() => undefined);
+        throw error;
+    }
     const contentType = response.headers.get('content-type') ?? info.mime_type ?? undefined;
 
     return toolStructuredResult({
@@ -100,6 +108,7 @@ function validateFileName(filename: string): string {
         filename !== path.basename(filename) ||
         invalidFileNameCharacters.test(filename) ||
         hasControlCharacter(filename) ||
+        Buffer.byteLength(filename, 'utf8') > MAX_FILE_NAME_BYTES ||
         filename.endsWith('.') ||
         filename.endsWith(' ') ||
         reservedFileName.test(filename)
@@ -118,7 +127,11 @@ function safeMattermostFileName(originalName: string | undefined, fileId: string
         .join('')
         .replace(/[. ]+$/g, '')
         .trim();
-    return safeName && safeName !== '.' && safeName !== '..' && !reservedFileName.test(safeName) ? safeName : fileId;
+    if (!safeName || safeName === '.' || safeName === '..' || reservedFileName.test(safeName)) {
+        return fileId;
+    }
+
+    return fitFileName(safeName, '') ?? fileId;
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -137,7 +150,11 @@ async function writeWithoutOverwrite(
     const stem = extension ? filename.slice(0, -extension.length) : filename;
 
     for (let suffix = 0; ; suffix += 1) {
-        const candidateName = suffix === 0 ? filename : `${stem} (${suffix})${extension}`;
+        const collisionSuffix = suffix === 0 ? '' : ` (${suffix})`;
+        const candidateName = fitFileName(`${stem}${extension}`, collisionSuffix);
+        if (candidateName === undefined) {
+            throw new Error('The filename extension and collision suffix exceed the 255-byte file name limit');
+        }
         const candidatePath = path.join(directory, candidateName);
         let fileHandle: FileHandle;
         try {
@@ -170,6 +187,31 @@ async function writeWithoutOverwrite(
             throw error;
         }
     }
+}
+
+function fitFileName(filename: string, suffix: string): string | undefined {
+    const extension = path.extname(filename);
+    const stem = extension ? filename.slice(0, -extension.length) : filename;
+    const availableStemBytes =
+        MAX_FILE_NAME_BYTES - Buffer.byteLength(extension, 'utf8') - Buffer.byteLength(suffix, 'utf8');
+    if (availableStemBytes < 0) {
+        return undefined;
+    }
+    return `${truncateUtf8(stem, availableStemBytes)}${suffix}${extension}`;
+}
+
+function truncateUtf8(value: string, maximumBytes: number): string {
+    let result = '';
+    let bytes = 0;
+    for (const character of value) {
+        const characterBytes = Buffer.byteLength(character, 'utf8');
+        if (bytes + characterBytes > maximumBytes) {
+            break;
+        }
+        result += character;
+        bytes += characterBytes;
+    }
+    return result;
 }
 
 function isAlreadyExistsError(error: unknown): boolean {

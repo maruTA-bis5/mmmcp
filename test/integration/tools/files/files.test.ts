@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Client4 } from '@mattermost/client';
@@ -76,19 +76,20 @@ describe(
                     });
 
                     directory = await mkdtemp(path.join(tmpdir(), 'mmmcp-file-integration-'));
+                    const resolvedDirectory = await realpath(directory);
                     const downloadResult = await context.mcpClient.callTool({
                         name: 'download_file',
                         arguments: { file_id: fileInfo.id, directory },
                     });
                     expectToolResultIsError(downloadResult).toBeFalsy();
                     expect(downloadResult.structuredContent).toMatchObject({
-                        path: path.join(directory, 'report.txt'),
+                        path: path.join(resolvedDirectory, 'report.txt'),
                         file_name: 'report.txt',
                         size_bytes: contents.byteLength,
                         content_type: expect.stringContaining('text/plain'),
                         temporary: false,
                     });
-                    expect(await readFile(path.join(directory, 'report.txt'))).toEqual(Buffer.from(contents));
+                    expect(await readFile(path.join(resolvedDirectory, 'report.txt'))).toEqual(Buffer.from(contents));
                 } finally {
                     if (directory) {
                         await rm(directory, { recursive: true, force: true });

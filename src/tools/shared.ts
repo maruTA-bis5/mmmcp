@@ -31,6 +31,10 @@ export interface ToolServer {
 }
 
 export const idSchema = z.string().min(1).describe('Mattermost resource ID');
+export const mattermostFileIdSchema = z
+    .string()
+    .regex(/^[a-z0-9]{26}$/, 'Must be a valid Mattermost file ID.')
+    .describe('Mattermost file ID');
 
 export const paginationSchema = {
     page: z.number().int().min(0).optional().describe('Zero-based page number'),
