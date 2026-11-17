@@ -160,6 +160,47 @@ describe('file tools', () => {
         expect(await readFile(path.join(directory, filename), 'utf8')).toBe('original');
     });
 
+    it.each([
+        { original: `cona.${'b'.repeat(251)}`, expected: testFileId },
+        { original: `${'a'.repeat(254)} b`, expected: 'a'.repeat(254) },
+        { original: `auxa.${'b'.repeat(251)}`, expected: testFileId },
+    ])('revalidates shortened metadata names ($expected)', async ({ original, expected }) => {
+        const directory = await makeTemporaryDirectory();
+        const { downloadHandler } = createHandlers({
+            fileName: original,
+            response: () => new Response('download'),
+        });
+
+        const first = getStructuredContent<DownloadResult>(await downloadHandler({ file_id: testFileId, directory }));
+        const duplicate = getStructuredContent<DownloadResult>(
+            await downloadHandler({ file_id: testFileId, directory }),
+        );
+
+        expect(first.file_name).toBe(expected);
+        expect(duplicate.file_name).toContain(' (1)');
+        for (const output of [first, duplicate]) {
+            expect(output.file_name).not.toMatch(/[. ]$/);
+            expect(output.file_name).not.toMatch(/^(con|aux)(?:\.|$)/i);
+            expect(Buffer.byteLength(output.file_name, 'utf8')).toBeLessThanOrEqual(255);
+            expect(await readFile(output.path, 'utf8')).toBe('download');
+        }
+    });
+
+    it('revalidates explicit filenames after fitting a collision suffix', async () => {
+        const directory = await makeTemporaryDirectory();
+        const filename = `a.${'b'.repeat(248)} ccc`;
+        await writeFile(path.join(directory, filename), 'original');
+        const { downloadHandler } = createHandlers({ response: () => new Response('download') });
+
+        const output = getStructuredContent<DownloadResult>(
+            await downloadHandler({ file_id: testFileId, directory, filename }),
+        );
+
+        expect(output.file_name).toBe(`a (1).${'b'.repeat(248)}`);
+        expect(await readFile(output.path, 'utf8')).toBe('download');
+        expect(await readFile(path.join(directory, filename), 'utf8')).toBe('original');
+    });
+
     it.each(['request', 'stream'])('removes its temporary directory after a %s failure', async failure => {
         const parent = await makeTemporaryDirectory();
         vi.mocked(tmpdir).mockReturnValue(parent);

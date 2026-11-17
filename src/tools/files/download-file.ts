@@ -73,7 +73,7 @@ async function downloadFile(
     let destination: { path: string; size: number };
     try {
         response = await client.downloadFile(file_id);
-        destination = await writeWithoutOverwrite(destinationDirectory, selectedName, response.body);
+        destination = await writeWithoutOverwrite(destinationDirectory, selectedName, response.body, file_id);
     } catch (error: unknown) {
         await response?.body?.cancel().catch(() => undefined);
         if (temporary) {
@@ -141,7 +141,7 @@ function safeMattermostFileName(originalName: string | undefined, fileId: string
         return fileId;
     }
 
-    return fitFileName(safeName, '');
+    return fitFileName(safeName, '', fileId);
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -155,13 +155,14 @@ async function writeWithoutOverwrite(
     directory: string,
     filename: string,
     body: ReadableStream<Uint8Array> | null,
+    fileId: string,
 ): Promise<{ path: string; size: number }> {
     const extension = path.extname(filename);
     const stem = extension ? filename.slice(0, -extension.length) : filename;
 
     for (let suffix = 0; ; suffix += 1) {
         const collisionSuffix = suffix === 0 ? '' : ` (${suffix})`;
-        const candidateName = fitFileName(`${stem}${extension}`, collisionSuffix);
+        const candidateName = fitFileName(`${stem}${extension}`, collisionSuffix, fileId);
         const candidatePath = path.join(directory, candidateName);
         let fileHandle: FileHandle;
         try {
@@ -196,7 +197,7 @@ async function writeWithoutOverwrite(
     }
 }
 
-function fitFileName(filename: string, suffix: string): string {
+function fitFileName(filename: string, suffix: string, fileId: string): string {
     const extension = path.extname(filename);
     const stem = extension ? filename.slice(0, -extension.length) : filename;
     const minimumStemBytes = Buffer.byteLength([...stem][0] ?? '', 'utf8');
@@ -206,7 +207,11 @@ function fitFileName(filename: string, suffix: string): string {
     );
     const availableStemBytes =
         MAX_FILE_NAME_BYTES - Buffer.byteLength(fittedExtension, 'utf8') - Buffer.byteLength(suffix, 'utf8');
-    return `${truncateUtf8(stem, availableStemBytes)}${suffix}${fittedExtension}`;
+    const candidate = `${truncateUtf8(stem, availableStemBytes)}${suffix}${fittedExtension}`.replace(/[. ]+$/g, '');
+    if (!candidate || reservedFileName.test(candidate)) {
+        return `${fileId}${suffix}`;
+    }
+    return validateFileName(candidate);
 }
 
 function truncateUtf8(value: string, maximumBytes: number): string {

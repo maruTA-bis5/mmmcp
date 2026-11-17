@@ -112,6 +112,7 @@ These tools are always available.
 
 `download_file` never overwrites existing files. It adds a numeric suffix and shortens
 the name, including the extension if necessary, to fit the 255-byte UTF-8 filename limit.
+Shortened names have trailing dots/spaces removed and use the file ID if they become Windows-reserved names.
 Successful temporary downloads are retained. Failed downloads remove their partial file
 and tool-created empty temporary directory; cleanup failures report the remaining path.
 Caller-supplied directories are never removed.
