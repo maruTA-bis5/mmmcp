@@ -107,7 +107,15 @@ These tools are always available.
 | `read_thread` | Gets the thread containing a post. |
 | `search_users` | Searches users by name, username, nickname, or email address. |
 | `search_posts` | Searches posts in a specified team. |
-| `read_file` | Reads UTF-8 text attachments up to 1 MiB. Binary or oversized attachments return metadata only. |
+| `read_file_info` | Gets attachment metadata without downloading its contents. |
+| `download_file` | Downloads one attachment to an existing directory or a unique temporary directory. |
+
+`download_file` never overwrites existing files. It adds a numeric suffix and shortens
+the name, including the extension if necessary, to fit the 255-byte UTF-8 filename limit.
+Shortened names have trailing dots/spaces removed and use the file ID if they become Windows-reserved names.
+Successful temporary downloads are retained. Failed downloads remove their partial file
+and tool-created empty temporary directory; cleanup failures report the remaining path.
+Caller-supplied directories are never removed.
 
 ### Write tools
 
