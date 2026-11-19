@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         mattermost-version: 
-          - '11.9.0' # latest
-          - '11.7.8' # curret lts
-          - '10.11.22' # previous lts
+          - '12.1.0' # latest
+          - '11.7.15' # current ESR
+          - '10.11.26' # previous ESR
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
